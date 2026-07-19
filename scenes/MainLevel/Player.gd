@@ -10,13 +10,14 @@ signal detonated_bomb(pos: Vector2)
 signal placed_bomb(pos: Vector2)
 signal hit_rock(pos: Vector2)
 signal combo_changed(combo: int)
-signal frenzy_changed(active: bool)
+signal frenzy_level_changed(level: int)
 
 const TILE_SIZE: int = 16
 const MAX_BATTERY: float = 10.0
 const MOVE_SPEED_FREE: float = 160.0 # ~0.1s per tile
 const MOVE_SPEED_DIRT: float = 53.0  # ~0.3s per tile
-const MOVE_SPEED_FRENZY: float = 120.0 # High speed super drill
+const MOVE_SPEED_FRENZY_L1: float = 85.0 # Slight speed boost for L1
+const MOVE_SPEED_FRENZY: float = 120.0 # High speed super drill for L2-L4
 const TILE_BATTERY: Vector2i = Vector2i(47, 9)
 const BATTERY_RECHARGE_AMOUNT: float = 3.0
 const TILE_BOMB: Vector2i = Vector2i(45, 9)
@@ -42,7 +43,9 @@ var _target_position: Vector2
 var _current_move_speed: float = MOVE_SPEED_FREE
 var _is_digging: bool = false
 var _is_busy: bool = false
-var is_frenzy: bool = false
+var frenzy_level: int = 0
+var is_frenzy: bool:
+	get: return frenzy_level >= 1
 
 @onready var _dirt_layer: TileMapLayer = $"../Tilemaps/DirtLayer"
 @onready var _sprite: Sprite2D = $Sprite2D
@@ -143,14 +146,15 @@ func _try_move(dir: Vector2i) -> void:
 				in_bounds = target_pos.x >= MAP_MIN_X and target_pos.x <= MAP_MAX_X
 			
 			if in_bounds:
-				if is_frenzy:
+				if frenzy_level >= 5:
 					_dirt_layer.erase_cell(target_cell)
 					_spend_battery(1.0)
 					_target_position = target_pos
-					_current_move_speed = MOVE_SPEED_FRENZY
+					_current_move_speed = _get_frenzy_speed()
 					_is_moving = true
 					_is_digging = true
 					_increment_combo()
+					_on_tile_dug_effects(target_cell, dir)
 					hit_rock.emit(target_pos)
 					_play_impact_lunge(dir)
 				else:
@@ -174,9 +178,10 @@ func _try_move(dir: Vector2i) -> void:
 			if has_tile:
 				_dirt_layer.erase_cell(target_cell)
 				_spend_battery(1.0)
-				_current_move_speed = MOVE_SPEED_FRENZY if is_frenzy else MOVE_SPEED_DIRT
+				_current_move_speed = _get_frenzy_speed()
 				_is_digging = true
 				_increment_combo()
+				_on_tile_dug_effects(target_cell, dir)
 				dug_tile.emit(target_pos)
 				_play_impact_lunge(dir)
 			else:
@@ -192,9 +197,10 @@ func _try_move(dir: Vector2i) -> void:
 				if has_tile:
 					_dirt_layer.erase_cell(target_cell)
 					_spend_battery(0.5)
-					_current_move_speed = MOVE_SPEED_FRENZY if is_frenzy else MOVE_SPEED_DIRT
+					_current_move_speed = _get_frenzy_speed()
 					_is_digging = true
 					_increment_combo()
+					_on_tile_dug_effects(target_cell, dir)
 					dug_tile.emit(target_pos)
 					_play_impact_lunge(dir)
 				else:
@@ -213,9 +219,10 @@ func _try_move(dir: Vector2i) -> void:
 				if has_tile:
 					_dirt_layer.erase_cell(target_cell)
 					_spend_battery(0.5)
-					_current_move_speed = MOVE_SPEED_FRENZY if is_frenzy else MOVE_SPEED_DIRT
+					_current_move_speed = _get_frenzy_speed()
 					_is_digging = true
 					_increment_combo()
+					_on_tile_dug_effects(target_cell, dir)
 					dug_tile.emit(target_pos)
 					_play_impact_lunge(dir)
 				else:
@@ -267,19 +274,59 @@ func _recharge_battery(amount: float) -> void:
 
 func _increment_combo() -> void:
 	combo_count += 1
-	if combo_count >= 10 and not is_frenzy:
-		is_frenzy = true
-		frenzy_changed.emit(true)
+	var new_level: int = 0
+	if combo_count >= 50:
+		new_level = 5
+	elif combo_count >= 40:
+		new_level = 4
+	elif combo_count >= 30:
+		new_level = 3
+	elif combo_count >= 20:
+		new_level = 2
+	elif combo_count >= 10:
+		new_level = 1
+		
+	if new_level != frenzy_level:
+		frenzy_level = new_level
+		if frenzy_level == 5:
+			_recharge_battery(MAX_BATTERY)
+			bombs = MAX_BOMBS
+			bombs_changed.emit(bombs, MAX_BOMBS)
+		frenzy_level_changed.emit(frenzy_level)
+		
 	combo_changed.emit(combo_count)
 
 
 func _reset_combo() -> void:
 	if combo_count > 0:
 		combo_count = 0
-		if is_frenzy:
-			is_frenzy = false
-			frenzy_changed.emit(false)
+		if frenzy_level > 0:
+			frenzy_level = 0
+			frenzy_level_changed.emit(0)
 		combo_changed.emit(combo_count)
+
+
+func _get_frenzy_speed() -> float:
+	if frenzy_level >= 5:
+		return MOVE_SPEED_FREE
+	elif frenzy_level >= 2:
+		return MOVE_SPEED_FRENZY
+	elif frenzy_level >= 1:
+		return MOVE_SPEED_FRENZY_L1
+	return MOVE_SPEED_DIRT
+
+
+func _on_tile_dug_effects(cell: Vector2i, dir: Vector2i) -> void:
+	if frenzy_level >= 3:
+		_recharge_battery(0.5)
+		
+	if frenzy_level >= 4 and dir != Vector2i.ZERO:
+		var perp1 := cell + Vector2i(-dir.y, dir.x)
+		var perp2 := cell + Vector2i(dir.y, -dir.x)
+		if _dirt_layer.get_cell_atlas_coords(perp1) == TILE_DIRT:
+			_dirt_layer.erase_cell(perp1)
+		if _dirt_layer.get_cell_atlas_coords(perp2) == TILE_DIRT:
+			_dirt_layer.erase_cell(perp2)
 
 
 func _collect_bomb() -> void:

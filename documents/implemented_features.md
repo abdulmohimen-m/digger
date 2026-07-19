@@ -71,16 +71,17 @@ This document logs all the features, logic, and polish implemented during this d
 - **Camera Configuration:** Viewport is scaled up 4x using a `Camera2D` with boundaries limiting horizontal view within play bounds. Crisp smoothing (`position_smoothing_speed = 8.0`) enabled.
 - **Noise Shake:** Attacking or hitting a wall/boundary triggers a smooth 6.0px screen shake, powered by a custom `FastNoiseLite` generator that decays linearly.
 
-### 6. Arcade Combo & Frenzy System
+### 6. Arcade Combo & 5-Tier Frenzy System
 - **Arcade Indicator:** A `COMBO xN` label sits on the HUD.
 - **Rules:** Increments with consecutive block digests (including battery collections). Resets to `0` instantly if the player stops moving (idles), moves into an empty tile, or bumps a wall.
 - **Bounce Juice:** Tweened scale-punch visual bounce occurs on each increment.
-- **🔥 FRENZY MODE (COMBO x10+):**
-  - **Activation:** Automatically triggers at **COMBO x10** and stays active as long as the continuous streak is maintained (`combo >= 10`).
-  - **Zero Battery Consumption:** All digging steps cost **0.0 battery**.
-  - **Instant 1-Hit Drilling:** Bypasses rock multi-hit locks, destroying Rocky Tiles instantly in **1 hit**.
-  - **Super-Drilling Propulsion:** Drilling speed more than doubles from `53.0` to `120.0`.
-  - **HUD Indicator:** Transforms into `"🔥 FRENZY x10 🔥"` with a pulsing Cyan visual display.
+- **🌟 REVISED 5-TIER FRENZY ESCALATION:**
+  - **Level 1 (COMBO x10 - Cyan):** 0 Battery Drain + **Slight Speed Boost (`85.0`)**.
+  - **Level 2 (COMBO x20 - Gold):** 0 Battery Drain + **More Speed Boost (`120.0`)**.
+  - **Level 3 (COMBO x30 - Green):** Adds **Battery Recharge** (+0.5 battery restored on every step dug).
+  - **Level 4 (COMBO x40 - Orange):** Adds **Side Micro-Shockwave** (clears 2 perpendicular side soft dirt tiles, leaving the front tile intact so the combo streak is never broken).
+  - **Level 5 (COMBO x50 - Magenta):** **HYPER GOD DRILL!** Max speed `160.0`, 1-hit rocks, and full battery (10.0) + bomb (+3) refill!
+  - **Undiggable Protection:** Undiggable tiles (`39, 15`) and perimeter walls **always** block drilling across all levels, preserving layout structure and bomb utility.
 
 ### 8. Directional Lunge & Squash/Stretch Hit Animation
 - **Universal Physical Juice:** Applied across all dirt digs, rock hits, undiggable bumps, and wall boundary impacts via `_play_impact_lunge(dir)`.

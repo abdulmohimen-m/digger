@@ -96,12 +96,27 @@ func _on_bombs_changed(current: int, _maximum: int) -> void:
 func _on_combo_changed(combo: int) -> void:
 	if combo >= 1:
 		var player := get_tree().get_first_node_in_group("player")
-		if player and player.get("is_frenzy"):
-			_combo_label.text = "🔥 FRENZY x" + str(combo) + " 🔥"
-			_combo_label.add_theme_color_override("font_color", Color("00ffff"))
-		else:
-			_combo_label.text = "COMBO x" + str(combo)
-			_combo_label.add_theme_color_override("font_color", Color("ffd700"))
+		var f_lvl: int = player.frenzy_level if (player and "frenzy_level" in player) else 0
+		
+		match f_lvl:
+			5:
+				_combo_label.text = "🌈 GOD DRILL x" + str(combo) + " 🌈"
+				_combo_label.add_theme_color_override("font_color", Color("ff00ff")) # Magenta
+			4:
+				_combo_label.text = "💥 FRENZY LV4 x" + str(combo) + " 💥"
+				_combo_label.add_theme_color_override("font_color", Color("ff8c00")) # Orange
+			3:
+				_combo_label.text = "🔋 FRENZY LV3 x" + str(combo) + " 🔋"
+				_combo_label.add_theme_color_override("font_color", Color("00ff00")) # Green
+			2:
+				_combo_label.text = "⚡ FRENZY LV2 x" + str(combo) + " ⚡"
+				_combo_label.add_theme_color_override("font_color", Color("ffd700")) # Gold
+			1:
+				_combo_label.text = "🔥 FRENZY LV1 x" + str(combo) + " 🔥"
+				_combo_label.add_theme_color_override("font_color", Color("00ffff")) # Cyan
+			_:
+				_combo_label.text = "COMBO x" + str(combo)
+				_combo_label.add_theme_color_override("font_color", Color("ffd700"))
 		
 		# Quick arcade scale punch
 		_combo_label.scale = Vector2(1.3, 1.3)
