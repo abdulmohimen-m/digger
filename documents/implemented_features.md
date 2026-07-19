@@ -75,9 +75,11 @@ This document logs all the features, logic, and polish implemented during this d
 - **Rules:** Increments with consecutive block digests (including battery collections). Resets to `0` instantly if the player stops moving (idles), moves into an empty tile, or bumps a wall.
 - **Bounce Juice:** Tweened scale-punch visual bounce occurs on each increment.
 
-### 7. Exaggerated Bomb Juice
-- **Bomb Drop Bounce:** When planted, the bomb sprite scales up dynamically from `0.1` to `1.5` before bouncing back down to `1.0` for a punchy, tactile feel. Emits a `"Deep Thud (Bomb Placed)"` SFX signal.
-- **Bomb Detonation Explosion:** Spawns 30 high-velocity orange/red particles with gravity, triggers a massive `10.0px` camera shake, and logs a `"Loud Boom (Explosion)"` SFX.
+### 8. Directional Lunge & Squash/Stretch Hit Animation
+- **Universal Physical Juice:** Applied across all dirt digs, rock hits, undiggable bumps, and wall boundary impacts via `_play_impact_lunge(dir)`.
+- **Directional Lunge:** Vehicle sprite lunges **4px** into the direction of impact (`dir * 4.0`) over 0.05s.
+- **Squash & Stretch:** Squishes scale to `(1.25, 0.75)` for horizontal hits or `(0.75, 1.25)` for vertical hits.
+- **Spring Recoil:** Springs back to `Vector2.ZERO` offset and `Vector2.ONE` scale over 0.12s with `TRANS_SPRING` easing, ensuring the vehicle never looks static during consecutive hits or digging steps.
 
 ---
 

@@ -114,6 +114,7 @@ func _try_move(dir: Vector2i) -> void:
 			_is_digging = true
 			_increment_combo()
 			collected_battery.emit(target_pos)
+			_play_impact_lunge(dir)
 			return
 		elif atlas == TILE_BOMB:
 			_dirt_layer.erase_cell(target_cell)
@@ -123,9 +124,10 @@ func _try_move(dir: Vector2i) -> void:
 			_is_moving = true
 			_is_digging = true
 			_increment_combo()
+			_play_impact_lunge(dir)
 			return
 		elif atlas == TILE_UNDIGGABLE:
-			_trigger_wall_hit(target_pos)
+			_trigger_wall_hit(target_pos, dir)
 			return
 		elif atlas == TILE_ROCK or atlas == TILE_CRACKED_ROCK:
 			var in_bounds: bool = true
@@ -142,11 +144,12 @@ func _try_move(dir: Vector2i) -> void:
 				_spend_battery(cost)
 				_increment_combo()
 				hit_rock.emit(target_pos)
+				_play_impact_lunge(dir)
 				
 				await get_tree().create_timer(0.3).timeout
 				_is_busy = false
 			else:
-				_trigger_wall_hit(target_pos)
+				_trigger_wall_hit(target_pos, dir)
 			return
 
 	match dir:
@@ -158,6 +161,7 @@ func _try_move(dir: Vector2i) -> void:
 				_is_digging = true
 				_increment_combo()
 				dug_tile.emit(target_pos)
+				_play_impact_lunge(dir)
 			else:
 				_current_move_speed = MOVE_SPEED_FREE
 				_is_digging = false
@@ -175,6 +179,7 @@ func _try_move(dir: Vector2i) -> void:
 					_is_digging = true
 					_increment_combo()
 					dug_tile.emit(target_pos)
+					_play_impact_lunge(dir)
 				else:
 					_current_move_speed = MOVE_SPEED_FREE
 					_is_digging = false
@@ -183,7 +188,7 @@ func _try_move(dir: Vector2i) -> void:
 				_target_position = target_pos
 				_is_moving = true
 			else:
-				_trigger_wall_hit(target_pos)
+				_trigger_wall_hit(target_pos, dir)
 
 		_:                # ---- Horizontal: blocked by map edges, dig if tile present (0.5 battery) ----
 			var in_bounds: bool = target_pos.x >= MAP_MIN_X and target_pos.x <= MAP_MAX_X
@@ -195,6 +200,7 @@ func _try_move(dir: Vector2i) -> void:
 					_is_digging = true
 					_increment_combo()
 					dug_tile.emit(target_pos)
+					_play_impact_lunge(dir)
 				else:
 					_current_move_speed = MOVE_SPEED_FREE
 					_is_digging = false
@@ -203,15 +209,31 @@ func _try_move(dir: Vector2i) -> void:
 				_target_position = target_pos
 				_is_moving = true
 			else:
-				_trigger_wall_hit(target_pos)
+				_trigger_wall_hit(target_pos, dir)
 
 
-func _trigger_wall_hit(target_pos: Vector2) -> void:
+func _trigger_wall_hit(target_pos: Vector2, dir: Vector2i) -> void:
 	_is_busy = true
 	_reset_combo()
+	_play_impact_lunge(dir)
 	hit_wall.emit(target_pos)
 	await get_tree().create_timer(0.3).timeout
 	_is_busy = false
+
+
+func _play_impact_lunge(dir: Vector2i) -> void:
+	if dir == Vector2i.ZERO:
+		return
+	
+	var tween := create_tween()
+	var lunge_offset := Vector2(dir.x * 4.0, dir.y * 4.0)
+	var squash_scale := Vector2(1.25, 0.75) if dir.x != 0 else Vector2(0.75, 1.25)
+	
+	tween.tween_property(_sprite, "position", lunge_offset, 0.05)
+	tween.parallel().tween_property(_sprite, "scale", squash_scale, 0.05)
+	
+	tween.tween_property(_sprite, "position", Vector2.ZERO, 0.12).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(_sprite, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 
 
 func _spend_battery(amount: float) -> void:
