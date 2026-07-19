@@ -17,9 +17,15 @@ This document logs all the features, logic, and polish implemented during this d
 - **Recharge Tiles:** Battery recharge canister tiles (sprite coordinates `(47, 9)`) spawned in the dirt layout.
 - **Recharging:** Landing on a recharge tile automatically erases it and restores **3.0 shards** of battery (capped at 10.0). No battery is consumed for the step.
 
-### 3. Split-Shard HUD UI
-- **Visuals:** Shows 10 gold shards representing battery levels.
-- **Precision:** To support the `0.5` fractional battery costs, each HUD shard is dynamically split into a left and right half (20 halves total). Shards transition from Gold (filled) to Dark Grey (empty) precisely.
+### 4. Bomb & Pickup System
+- **Bomb Pickups:** Bomb canister tiles (sprite coordinates `(45, 9)`) spawned in the grid layout. Collecting one restores **1 bomb** (capped at 3).
+- **Placement & Fuse:** Pressing `ui_accept` (Space) consumes **3.0 battery** and **1 bomb** to plant an explosive on the current tile. The bomb ticks down on a **2.0-second fuse** while flashing red/white.
+- **3x3 Blast Radius:** Obliterates all breakable tiles and items in a 3x3 area around the bomb's origin. Indestructible side walls are immune.
+- **Blast Penalty:** Standing inside the 3x3 blast area when it detonates deals a **5.0 battery damage penalty** to the player.
+
+### 5. Bomb Inventory HUD UI
+- **Visuals:** Shows 3 square red indicators directly below the battery container.
+- **Dynamic State:** Squares transition from Bright Red (available) to Dark Grey (empty) as bombs are used or picked up.
 
 ---
 
@@ -29,7 +35,7 @@ This document logs all the features, logic, and polish implemented during this d
 - **Dynamic Friction:** Movement through free space is fast and snappy (`MOVE_SPEED_FREE = 160.0`, ~0.1s per cell). Movement when drilling or collecting rechargeable tiles is slowed down (`MOVE_SPEED_DIRT = 53.0`, ~0.3s per cell) to give a heavy, tactile feel.
 
 ### 2. Decoupled Feedback System
-- **Observer Pattern:** The `Player` script emits signals (`dug_tile`, `moved_freely`, `hit_wall`, `collected_battery`) but handles no sound or particle assets.
+- **Observer Pattern:** The `Player` script emits signals (`dug_tile`, `moved_freely`, `hit_wall`, `collected_battery`, `placed_bomb`, `detonated_bomb`) but handles no sound or particle assets.
 - **FeedbackManager Node:** A dedicated `FeedbackManager` node intercepts these signals to trigger VFX and SFX.
 - **Inspector Tuning:** Exposes `@export` variables for `PackedScene` (VFX) and `AudioStream` (SFX) so sounds and particle systems can be swapped directly inside the Godot Editor inspector.
 
@@ -49,6 +55,10 @@ This document logs all the features, logic, and polish implemented during this d
 - **Rules:** Increments with consecutive block digests (including battery collections). Resets to `0` instantly if the player stops moving (idles), moves into an empty tile, or bumps a wall.
 - **Bounce Juice:** Tweened scale-punch visual bounce occurs on each increment.
 
+### 7. Exaggerated Bomb Juice
+- **Bomb Drop Bounce:** When planted, the bomb sprite scales up dynamically from `0.1` to `1.5` before bouncing back down to `1.0` for a punchy, tactile feel. Emits a `"Deep Thud (Bomb Placed)"` SFX signal.
+- **Bomb Detonation Explosion:** Spawns 30 high-velocity orange/red particles with gravity, triggers a massive `10.0px` camera shake, and logs a `"Loud Boom (Explosion)"` SFX.
+
 ---
 
 ## 🛠️ Developer & Playtest Utilities
@@ -60,7 +70,7 @@ This document logs all the features, logic, and polish implemented during this d
 
 - **Player Logic:** [Player.gd](file:///f:/Godot/Projects/digger-kill-games/scenes/MainLevel/Player.gd)
 - **Grid Dirt Logic:** [DiggableLayer.gd](file:///f:/Godot/Projects/digger-kill-games/scenes/MainLevel/DiggableLayer.gd)
-- **Fractional Shard UI:** [HUD.gd](file:///f:/Godot/Projects/digger-kill-games/scenes/MainLevel/HUD.gd)
+- **Fractional Shard UI & Bomb HUD:** [HUD.gd](file:///f:/Godot/Projects/digger-kill-games/scenes/MainLevel/HUD.gd)
 - **VFX/SFX Manager:** [FeedbackManager.gd](file:///f:/Godot/Projects/digger-kill-games/scenes/MainLevel/FeedbackManager.gd)
 - **Noise Camera Shake:** [PlayerCamera.gd](file:///f:/Godot/Projects/digger-kill-games/scenes/MainLevel/PlayerCamera.gd)
 - **Main Scene:** [MainLevel.tscn](file:///f:/Godot/Projects/digger-kill-games/scenes/MainLevel/MainLevel.tscn)
