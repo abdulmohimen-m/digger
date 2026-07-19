@@ -13,6 +13,8 @@ const BATTERY_RECHARGE_AMOUNT: float = 3.0
 const MAP_MIN_X: float = 1.0 * TILE_SIZE + TILE_SIZE * 0.5   # center of col 1
 const MAP_MAX_X: float = 10.0 * TILE_SIZE + TILE_SIZE * 0.5  # center of col 10
 
+@export var infinite_battery: bool = false
+
 var battery: float = MAX_BATTERY
 var _is_moving: bool = false
 var _target_position: Vector2
@@ -70,7 +72,7 @@ func _try_move(dir: Vector2i) -> void:
 			_dirt_layer.erase_cell(target_cell)
 			_recharge_battery(BATTERY_RECHARGE_AMOUNT)
 			_target_position = target_pos
-			_current_move_speed = MOVE_SPEED_FREE
+			_current_move_speed = MOVE_SPEED_DIRT
 			_is_moving = true
 			return
 
@@ -110,6 +112,8 @@ func _try_move(dir: Vector2i) -> void:
 
 
 func _spend_battery(amount: float) -> void:
+	if infinite_battery:
+		return
 	battery = maxf(0.0, battery - amount)
 	battery_changed.emit(battery, MAX_BATTERY)
 
