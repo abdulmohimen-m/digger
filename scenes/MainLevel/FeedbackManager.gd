@@ -12,10 +12,13 @@ extends Node2D
 @export var hit_wall_sfx: AudioStream
 @export var battery_sfx: AudioStream
 
+var _camera: Camera2D
+
 func _ready() -> void:
 	# Find the player in the scene
 	var player = get_tree().get_first_node_in_group("player")
 	if player:
+		_camera = player.get_node_or_null("Camera2D")
 		player.dug_tile.connect(_on_player_dug_tile)
 		player.moved_freely.connect(_on_player_moved_freely)
 		player.hit_wall.connect(_on_player_hit_wall)
@@ -32,6 +35,8 @@ func _on_player_moved_freely(pos: Vector2) -> void:
 func _on_player_hit_wall(pos: Vector2) -> void:
 	_spawn_vfx(hit_wall_vfx, pos, Color("ff0000")) # Red placeholder
 	_play_sfx(hit_wall_sfx, "Hit Wall")
+	if _camera and _camera.has_method("shake"):
+		_camera.shake(6.0)
 
 func _on_player_collected_battery(pos: Vector2) -> void:
 	_spawn_vfx(battery_vfx, pos, Color("ffd700")) # Gold placeholder

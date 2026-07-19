@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://byo7vp7jbya41" path="res://scenes/MainLevel/HUD.gd" id="4_hud"]
 [ext_resource type="Texture2D" uid="uid://ds8gv8wol7gko" path="res://assets/kenney/kenney_1-bit-pack/Tilesheet/colored.png" id="5_texture"]
 [ext_resource type="Script" path="res://scenes/MainLevel/FeedbackManager.gd" id="6_feedback"]
+[ext_resource type="Script" path="res://scenes/MainLevel/PlayerCamera.gd" id="7_camera"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_player"]
 size = Vector2(14, 14)
@@ -37,6 +38,7 @@ region_rect = Rect2(476, 136, 16, 16)
 shape = SubResource("RectangleShape2D_player")
 
 [node name="Camera2D" type="Camera2D" parent="Player" unique_id=554433221]
+script = ExtResource("7_camera")
 zoom = Vector2(4, 4)
 limit_left = 0
 limit_top = 0
