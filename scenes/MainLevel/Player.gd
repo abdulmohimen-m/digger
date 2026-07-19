@@ -8,6 +8,7 @@ signal hit_wall(pos: Vector2)
 signal collected_battery(pos: Vector2)
 signal detonated_bomb(pos: Vector2)
 signal placed_bomb(pos: Vector2)
+signal hit_rock(pos: Vector2)
 signal combo_changed(combo: int)
 
 const TILE_SIZE: int = 16
@@ -18,8 +19,12 @@ const TILE_BATTERY: Vector2i = Vector2i(47, 9)
 const BATTERY_RECHARGE_AMOUNT: float = 3.0
 const TILE_BOMB: Vector2i = Vector2i(45, 9)
 const TILE_UNDIGGABLE: Vector2i = Vector2i(39, 15)
+const TILE_ROCK: Vector2i = Vector2i(10, 17)
+const TILE_CRACKED_ROCK: Vector2i = Vector2i(11, 17)
+const TILE_DIRT: Vector2i = Vector2i(32, 15)
 const MAX_BOMBS: int = 3
 const BOMB_BATTERY_COST: float = 3.0
+const ROCK_DRILL_DELAY: float = 0.4
 
 # Map horizontal bounds (tile columns 1-10 are playable)
 const MAP_MIN_X: float = 1.0 * TILE_SIZE + TILE_SIZE * 0.5   # center of col 1
@@ -34,6 +39,7 @@ var _is_moving: bool = false
 var _target_position: Vector2
 var _current_move_speed: float = MOVE_SPEED_FREE
 var _is_digging: bool = false
+var _is_busy: bool = false
 
 @onready var _dirt_layer: TileMapLayer = $"../Tilemaps/DirtLayer"
 @onready var _sprite: Sprite2D = $Sprite2D
@@ -49,8 +55,9 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if _is_moving:
-		global_position = global_position.move_toward(_target_position, _current_move_speed * delta)
+	if _is_moving or _is_busy:
+		if _is_moving:
+			global_position = global_position.move_toward(_target_position, _current_move_speed * delta)
 		if _is_digging:
 			_sprite.position = Vector2(
 				randf_range(-1.5, 1.5),
@@ -120,6 +127,28 @@ func _try_move(dir: Vector2i) -> void:
 		elif atlas == TILE_UNDIGGABLE:
 			_reset_combo()
 			hit_wall.emit(target_pos)
+			return
+		elif atlas == TILE_ROCK or atlas == TILE_CRACKED_ROCK:
+			var in_bounds: bool = true
+			if dir == Vector2i(0, -1):
+				in_bounds = target_pos.y >= TILE_SIZE * 0.5
+			elif dir.x != 0:
+				in_bounds = target_pos.x >= MAP_MIN_X and target_pos.x <= MAP_MAX_X
+			
+			if in_bounds:
+				_is_busy = true
+				var next_tile: Vector2i = TILE_CRACKED_ROCK if atlas == TILE_ROCK else TILE_DIRT
+				_dirt_layer.set_cell(target_cell, 1, next_tile)
+				var cost: float = 1.0 if dir == Vector2i(0, 1) else 0.5
+				_spend_battery(cost)
+				_increment_combo()
+				hit_rock.emit(target_pos)
+				
+				await get_tree().create_timer(0.3).timeout
+				_is_busy = false
+			else:
+				_reset_combo()
+				hit_wall.emit(target_pos)
 			return
 
 	match dir:

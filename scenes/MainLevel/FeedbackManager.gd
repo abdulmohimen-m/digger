@@ -25,6 +25,7 @@ func _ready() -> void:
 		player.collected_battery.connect(_on_player_collected_battery)
 		player.placed_bomb.connect(_on_player_placed_bomb)
 		player.detonated_bomb.connect(_on_player_detonated_bomb)
+		player.hit_rock.connect(_on_player_hit_rock)
 
 func _on_player_dug_tile(pos: Vector2) -> void:
 	_spawn_vfx(dig_vfx, pos, Color("8b5a2b")) # Brown placeholder
@@ -112,4 +113,31 @@ func _on_player_detonated_bomb(pos: Vector2) -> void:
 	
 	var timer = get_tree().create_timer(particles.lifetime + 0.1)
 	timer.timeout.connect(particles.queue_free)
+
+
+func _on_player_hit_rock(pos: Vector2) -> void:
+	_play_sfx(null, "Rock Crunch")
+	if _camera and _camera.has_method("shake"):
+		_camera.shake(4.0)
+		
+	var particles = CPUParticles2D.new()
+	particles.global_position = pos
+	particles.amount = 12
+	particles.explosiveness = 1.0
+	particles.one_shot = true
+	particles.lifetime = 0.5
+	particles.spread = 180.0
+	particles.gravity = Vector2(0, 300.0)
+	particles.initial_velocity_min = 40.0
+	particles.initial_velocity_max = 90.0
+	particles.scale_amount_min = 2.0
+	particles.scale_amount_max = 5.0
+	particles.color = Color(0.33, 0.33, 0.33) # Dark Grey Stone
+	
+	add_child(particles)
+	particles.emitting = true
+	
+	var timer = get_tree().create_timer(particles.lifetime + 0.1)
+	timer.timeout.connect(particles.queue_free)
+
 

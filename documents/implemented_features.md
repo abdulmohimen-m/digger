@@ -28,7 +28,19 @@ This document logs all the features, logic, and polish implemented during this d
 - **Drill Response:** Drilling into an undiggable tile blocks movement, resets combo, emits `hit_wall` feedback (camera shake and sound effect), and consumes **0 battery**.
 - **Bomb Destructible:** Unlike perimeter walls, undiggable tiles **can** be destroyed using bombs.
 
-### 6. Bomb Inventory HUD UI
+### 6. Rocky Tiles System
+- **3-Hit Durability Progression:** Rocky tiles (sprite coordinates `(10, 17)`) require **3 hits** total to break through.
+- **Instant Hit + 0.3s Cooldown:**
+  - Tile damage, battery deduction, 4.0px screen shake, dark grey stone particles, and SFX trigger **instantly on touch**.
+  - A dedicated `_is_busy` state lock enforces a clean **0.3-second input cooldown** between hits.
+  - Holding down a directional key against rock takes **~0.9 seconds total** across all 3 hits with smooth input pacing and zero input buffering bugs.
+- **Hit Progression:**
+  - **1st Hit (`10, 17`):** Instant rock hit feedback $\rightarrow$ transforms tile into Cracked Rock (`11, 17`) $\rightarrow$ 0.3s cooldown.
+  - **2nd Hit (`11, 17`):** Instant rock hit feedback $\rightarrow$ transforms tile into Standard Dirt (`32, 15`) $\rightarrow$ 0.3s cooldown.
+  - **3rd Hit (`32, 15`):** Digs standard dirt normally, spending battery and stepping forward into the cell.
+- **Bomb Destruction:** Bombs obliterate rocky tiles in **1 hit** regardless of damage stage.
+
+### 7. Bomb Inventory HUD UI
 - **Visuals:** Shows 3 square red indicators directly below the battery container.
 - **Dynamic State:** Squares transition from Bright Red (available) to Dark Grey (empty) as bombs are used or picked up.
 
