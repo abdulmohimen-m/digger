@@ -1,7 +1,10 @@
 extends CharacterBody2D
 
 signal battery_changed(current: float, maximum: float)
-
+signal dug_tile(pos: Vector2)
+signal moved_freely(pos: Vector2)
+signal hit_wall(pos: Vector2)
+signal collected_battery(pos: Vector2)
 const TILE_SIZE: int = 16
 const MAX_BATTERY: float = 10.0
 const MOVE_SPEED_FREE: float = 160.0 # ~0.1s per tile
@@ -74,6 +77,7 @@ func _try_move(dir: Vector2i) -> void:
 			_target_position = target_pos
 			_current_move_speed = MOVE_SPEED_DIRT
 			_is_moving = true
+			collected_battery.emit(target_pos)
 			return
 
 	match dir:
@@ -82,8 +86,10 @@ func _try_move(dir: Vector2i) -> void:
 				_dirt_layer.erase_cell(target_cell)
 				_spend_battery(1.0)
 				_current_move_speed = MOVE_SPEED_DIRT
+				dug_tile.emit(target_pos)
 			else:
 				_current_move_speed = MOVE_SPEED_FREE
+				moved_freely.emit(target_pos)
 			_target_position = target_pos
 			_is_moving = true
 
@@ -93,10 +99,14 @@ func _try_move(dir: Vector2i) -> void:
 					_dirt_layer.erase_cell(target_cell)
 					_spend_battery(0.5)
 					_current_move_speed = MOVE_SPEED_DIRT
+					dug_tile.emit(target_pos)
 				else:
 					_current_move_speed = MOVE_SPEED_FREE
+					moved_freely.emit(target_pos)
 				_target_position = target_pos
 				_is_moving = true
+			else:
+				hit_wall.emit(target_pos)
 
 		_:                # ---- Horizontal: blocked by map edges, dig if tile present (0.5 battery) ----
 			var in_bounds: bool = target_pos.x >= MAP_MIN_X and target_pos.x <= MAP_MAX_X
@@ -105,10 +115,14 @@ func _try_move(dir: Vector2i) -> void:
 					_dirt_layer.erase_cell(target_cell)
 					_spend_battery(0.5)
 					_current_move_speed = MOVE_SPEED_DIRT
+					dug_tile.emit(target_pos)
 				else:
 					_current_move_speed = MOVE_SPEED_FREE
+					moved_freely.emit(target_pos)
 				_target_position = target_pos
 				_is_moving = true
+			else:
+				hit_wall.emit(target_pos)
 
 
 func _spend_battery(amount: float) -> void:

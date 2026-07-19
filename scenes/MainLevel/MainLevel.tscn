@@ -5,6 +5,7 @@
 [ext_resource type="Script" uid="uid://i7ye0mrqrf54" path="res://scenes/MainLevel/Player.gd" id="3_player"]
 [ext_resource type="Script" uid="uid://byo7vp7jbya41" path="res://scenes/MainLevel/HUD.gd" id="4_hud"]
 [ext_resource type="Texture2D" uid="uid://ds8gv8wol7gko" path="res://assets/kenney/kenney_1-bit-pack/Tilesheet/colored.png" id="5_texture"]
+[ext_resource type="Script" path="res://scenes/MainLevel/FeedbackManager.gd" id="6_feedback"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_player"]
 size = Vector2(14, 14)
@@ -42,6 +43,9 @@ limit_top = 0
 limit_right = 192
 position_smoothing_enabled = true
 position_smoothing_speed = 8.0
+
+[node name="FeedbackManager" type="Node2D" parent="."]
+script = ExtResource("6_feedback")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=123789456]
 
