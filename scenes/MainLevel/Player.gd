@@ -4,7 +4,7 @@ signal battery_changed(current: float, maximum: float)
 
 const TILE_SIZE: int = 16
 const MAX_BATTERY: float = 10.0
-const MOVE_COOLDOWN: float = 0.15  # seconds between grid steps
+const MOVE_SPEED: float = 120.0  # speed of slide in pixels/sec
 const TILE_BATTERY: Vector2i = Vector2i(47, 9)
 const BATTERY_RECHARGE_AMOUNT: float = 3.0
 
@@ -13,7 +13,8 @@ const MAP_MIN_X: float = 1.0 * TILE_SIZE + TILE_SIZE * 0.5   # center of col 1
 const MAP_MAX_X: float = 10.0 * TILE_SIZE + TILE_SIZE * 0.5  # center of col 10
 
 var battery: float = MAX_BATTERY
-var _move_timer: float = 0.0
+var _is_moving: bool = false
+var _target_position: Vector2
 
 @onready var _dirt_layer: TileMapLayer = $"../Tilemaps/DirtLayer"
 
@@ -22,15 +23,19 @@ func _ready() -> void:
 	add_to_group("player")
 	# Snap to nearest tile center on startup
 	position = position.snapped(Vector2(TILE_SIZE, TILE_SIZE)) + Vector2(TILE_SIZE, TILE_SIZE) * 0.5
+	_target_position = global_position
 	battery_changed.emit(battery, MAX_BATTERY)
 
 
-func _process(delta: float) -> void:
-	if battery <= 0.0:
+func _physics_process(delta: float) -> void:
+	if _is_moving:
+		global_position = global_position.move_toward(_target_position, MOVE_SPEED * delta)
+		if global_position == _target_position:
+			_is_moving = false
 		return
 
-	_move_timer = maxf(0.0, _move_timer - delta)
-	if _move_timer > 0.0:
+	# Frozen if battery is out and we are not currently moving
+	if battery <= 0.0:
 		return
 
 	var dir := Vector2i.ZERO
@@ -47,22 +52,23 @@ func _process(delta: float) -> void:
 		return
 
 	_try_move(dir)
-	_move_timer = MOVE_COOLDOWN
 
 
 func _try_move(dir: Vector2i) -> void:
-	var target_pos := global_position + Vector2(dir.x * TILE_SIZE, dir.y * TILE_SIZE)
+	var current_pos := _target_position
+	var target_pos := current_pos + Vector2(dir.x * TILE_SIZE, dir.y * TILE_SIZE)
 	var target_cell: Vector2i = _dirt_layer.local_to_map(_dirt_layer.to_local(target_pos))
 	var source_id: int = _dirt_layer.get_cell_source_id(target_cell)
 	var has_tile: bool = source_id != -1
 
-	# Intercept battery recharge tiles before regular movement rules
+	# Intercept battery recharge tiles
 	if has_tile:
 		var atlas: Vector2i = _dirt_layer.get_cell_atlas_coords(target_cell)
 		if atlas == TILE_BATTERY:
 			_dirt_layer.erase_cell(target_cell)
 			_recharge_battery(BATTERY_RECHARGE_AMOUNT)
-			global_position = target_pos
+			_target_position = target_pos
+			_is_moving = true
 			return
 
 	match dir:
@@ -70,14 +76,16 @@ func _try_move(dir: Vector2i) -> void:
 			if has_tile:
 				_dirt_layer.erase_cell(target_cell)
 				_spend_battery(1.0)
-			global_position = target_pos
+			_target_position = target_pos
+			_is_moving = true
 
 		Vector2i(0, -1):  # ---- Up: dig if tile present (0.5 battery), step in ----
 			if target_pos.y >= TILE_SIZE * 0.5:
 				if has_tile:
 					_dirt_layer.erase_cell(target_cell)
 					_spend_battery(0.5)
-				global_position = target_pos
+				_target_position = target_pos
+				_is_moving = true
 
 		_:                # ---- Horizontal: blocked by map edges, dig if tile present (0.5 battery) ----
 			var in_bounds: bool = target_pos.x >= MAP_MIN_X and target_pos.x <= MAP_MAX_X
@@ -85,7 +93,8 @@ func _try_move(dir: Vector2i) -> void:
 				if has_tile:
 					_dirt_layer.erase_cell(target_cell)
 					_spend_battery(0.5)
-				global_position = target_pos
+				_target_position = target_pos
+				_is_moving = true
 
 
 func _spend_battery(amount: float) -> void:

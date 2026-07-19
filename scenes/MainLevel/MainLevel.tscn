@@ -39,6 +39,8 @@ zoom = Vector2(4, 4)
 limit_left = 0
 limit_top = 0
 limit_right = 192
+position_smoothing_enabled = true
+position_smoothing_speed = 8.0
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=123789456]
 
