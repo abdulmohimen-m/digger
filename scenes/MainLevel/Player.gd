@@ -125,8 +125,7 @@ func _try_move(dir: Vector2i) -> void:
 			_increment_combo()
 			return
 		elif atlas == TILE_UNDIGGABLE:
-			_reset_combo()
-			hit_wall.emit(target_pos)
+			_trigger_wall_hit(target_pos)
 			return
 		elif atlas == TILE_ROCK or atlas == TILE_CRACKED_ROCK:
 			var in_bounds: bool = true
@@ -147,8 +146,7 @@ func _try_move(dir: Vector2i) -> void:
 				await get_tree().create_timer(0.3).timeout
 				_is_busy = false
 			else:
-				_reset_combo()
-				hit_wall.emit(target_pos)
+				_trigger_wall_hit(target_pos)
 			return
 
 	match dir:
@@ -185,8 +183,7 @@ func _try_move(dir: Vector2i) -> void:
 				_target_position = target_pos
 				_is_moving = true
 			else:
-				_reset_combo()
-				hit_wall.emit(target_pos)
+				_trigger_wall_hit(target_pos)
 
 		_:                # ---- Horizontal: blocked by map edges, dig if tile present (0.5 battery) ----
 			var in_bounds: bool = target_pos.x >= MAP_MIN_X and target_pos.x <= MAP_MAX_X
@@ -206,8 +203,15 @@ func _try_move(dir: Vector2i) -> void:
 				_target_position = target_pos
 				_is_moving = true
 			else:
-				_reset_combo()
-				hit_wall.emit(target_pos)
+				_trigger_wall_hit(target_pos)
+
+
+func _trigger_wall_hit(target_pos: Vector2) -> void:
+	_is_busy = true
+	_reset_combo()
+	hit_wall.emit(target_pos)
+	await get_tree().create_timer(0.3).timeout
+	_is_busy = false
 
 
 func _spend_battery(amount: float) -> void:

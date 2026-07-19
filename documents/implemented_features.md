@@ -23,10 +23,13 @@ This document logs all the features, logic, and polish implemented during this d
 - **3x3 Blast Radius:** Obliterates all breakable tiles and items in a 3x3 area around the bomb's origin. Indestructible side walls are immune.
 - **Blast Penalty:** Standing inside the 3x3 blast area when it detonates deals a **5.0 battery damage penalty** to the player.
 
-### 5. Undiggable Tiles System
-- **Hard Obstacles:** Undiggable tiles (sprite coordinates `(39, 15)`) block regular drilling attempts.
-- **Drill Response:** Drilling into an undiggable tile blocks movement, resets combo, emits `hit_wall` feedback (camera shake and sound effect), and consumes **0 battery**.
-- **Bomb Destructible:** Unlike perimeter walls, undiggable tiles **can** be destroyed using bombs.
+### 5. Undiggable Tiles & Wall Boundaries System
+- **Hard Obstacles:** Undiggable tiles (sprite coordinates `(39, 15)`), perimeter walls, and map boundaries block player movement.
+- **Unified 0.3s Impact Cooldown:**
+  - Bumping an undiggable tile or wall boundary instantly resets combo and emits `hit_wall` feedback (camera shake & metallic clink SFX).
+  - Enforces a standardized **0.3-second input cooldown** via `_trigger_wall_hit()`, matching the Rocky Tile hit rhythm.
+  - Holding down a directional key against any wall plays a clean, satisfying 0.3s rhythmic bump without audio or screen-shake spam.
+- **Bomb Destructible:** Undiggable tiles **can** be destroyed using bombs (unlike perimeter map edge walls).
 
 ### 6. Rocky Tiles System
 - **3-Hit Durability Progression:** Rocky tiles (sprite coordinates `(10, 17)`) require **3 hits** total to break through.
