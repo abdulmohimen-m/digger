@@ -95,10 +95,16 @@ func _on_bombs_changed(current: int, _maximum: int) -> void:
 
 func _on_combo_changed(combo: int) -> void:
 	if combo >= 1:
-		_combo_label.text = "COMBO x" + str(combo)
+		var player := get_tree().get_first_node_in_group("player")
+		if player and player.get("is_frenzy"):
+			_combo_label.text = "🔥 FRENZY x" + str(combo) + " 🔥"
+			_combo_label.add_theme_color_override("font_color", Color("00ffff"))
+		else:
+			_combo_label.text = "COMBO x" + str(combo)
+			_combo_label.add_theme_color_override("font_color", Color("ffd700"))
 		
 		# Quick arcade scale punch
-		_combo_label.scale = Vector2(1.2, 1.2)
+		_combo_label.scale = Vector2(1.3, 1.3)
 		var tween = create_tween()
 		tween.tween_property(_combo_label, "scale", Vector2.ONE, 0.15)
 	else:

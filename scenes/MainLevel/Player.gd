@@ -10,11 +10,13 @@ signal detonated_bomb(pos: Vector2)
 signal placed_bomb(pos: Vector2)
 signal hit_rock(pos: Vector2)
 signal combo_changed(combo: int)
+signal frenzy_changed(active: bool)
 
 const TILE_SIZE: int = 16
 const MAX_BATTERY: float = 10.0
 const MOVE_SPEED_FREE: float = 160.0 # ~0.1s per tile
 const MOVE_SPEED_DIRT: float = 53.0  # ~0.3s per tile
+const MOVE_SPEED_FRENZY: float = 120.0 # High speed super drill
 const TILE_BATTERY: Vector2i = Vector2i(47, 9)
 const BATTERY_RECHARGE_AMOUNT: float = 3.0
 const TILE_BOMB: Vector2i = Vector2i(45, 9)
@@ -40,6 +42,7 @@ var _target_position: Vector2
 var _current_move_speed: float = MOVE_SPEED_FREE
 var _is_digging: bool = false
 var _is_busy: bool = false
+var is_frenzy: bool = false
 
 @onready var _dirt_layer: TileMapLayer = $"../Tilemaps/DirtLayer"
 @onready var _sprite: Sprite2D = $Sprite2D
@@ -140,17 +143,28 @@ func _try_move(dir: Vector2i) -> void:
 				in_bounds = target_pos.x >= MAP_MIN_X and target_pos.x <= MAP_MAX_X
 			
 			if in_bounds:
-				_is_busy = true
-				var next_tile: Vector2i = TILE_CRACKED_ROCK if atlas == TILE_ROCK else TILE_DIRT
-				_dirt_layer.set_cell(target_cell, 1, next_tile)
-				var cost: float = 1.0 if dir == Vector2i(0, 1) else 0.5
-				_spend_battery(cost)
-				_increment_combo()
-				hit_rock.emit(target_pos)
-				_play_impact_lunge(dir)
-				
-				await get_tree().create_timer(0.3).timeout
-				_is_busy = false
+				if is_frenzy:
+					_dirt_layer.erase_cell(target_cell)
+					_spend_battery(1.0)
+					_target_position = target_pos
+					_current_move_speed = MOVE_SPEED_FRENZY
+					_is_moving = true
+					_is_digging = true
+					_increment_combo()
+					hit_rock.emit(target_pos)
+					_play_impact_lunge(dir)
+				else:
+					_is_busy = true
+					var next_tile: Vector2i = TILE_CRACKED_ROCK if atlas == TILE_ROCK else TILE_DIRT
+					_dirt_layer.set_cell(target_cell, 1, next_tile)
+					var cost: float = 1.0 if dir == Vector2i(0, 1) else 0.5
+					_spend_battery(cost)
+					_increment_combo()
+					hit_rock.emit(target_pos)
+					_play_impact_lunge(dir)
+					
+					await get_tree().create_timer(0.3).timeout
+					_is_busy = false
 			else:
 				_trigger_wall_hit(target_pos, dir)
 			return
@@ -160,7 +174,7 @@ func _try_move(dir: Vector2i) -> void:
 			if has_tile:
 				_dirt_layer.erase_cell(target_cell)
 				_spend_battery(1.0)
-				_current_move_speed = MOVE_SPEED_DIRT
+				_current_move_speed = MOVE_SPEED_FRENZY if is_frenzy else MOVE_SPEED_DIRT
 				_is_digging = true
 				_increment_combo()
 				dug_tile.emit(target_pos)
@@ -178,7 +192,7 @@ func _try_move(dir: Vector2i) -> void:
 				if has_tile:
 					_dirt_layer.erase_cell(target_cell)
 					_spend_battery(0.5)
-					_current_move_speed = MOVE_SPEED_DIRT
+					_current_move_speed = MOVE_SPEED_FRENZY if is_frenzy else MOVE_SPEED_DIRT
 					_is_digging = true
 					_increment_combo()
 					dug_tile.emit(target_pos)
@@ -199,7 +213,7 @@ func _try_move(dir: Vector2i) -> void:
 				if has_tile:
 					_dirt_layer.erase_cell(target_cell)
 					_spend_battery(0.5)
-					_current_move_speed = MOVE_SPEED_DIRT
+					_current_move_speed = MOVE_SPEED_FRENZY if is_frenzy else MOVE_SPEED_DIRT
 					_is_digging = true
 					_increment_combo()
 					dug_tile.emit(target_pos)
@@ -240,7 +254,7 @@ func _play_impact_lunge(dir: Vector2i) -> void:
 
 
 func _spend_battery(amount: float) -> void:
-	if infinite_battery:
+	if infinite_battery or is_frenzy:
 		return
 	battery = maxf(0.0, battery - amount)
 	battery_changed.emit(battery, MAX_BATTERY)
@@ -253,12 +267,18 @@ func _recharge_battery(amount: float) -> void:
 
 func _increment_combo() -> void:
 	combo_count += 1
+	if combo_count >= 10 and not is_frenzy:
+		is_frenzy = true
+		frenzy_changed.emit(true)
 	combo_changed.emit(combo_count)
 
 
 func _reset_combo() -> void:
 	if combo_count > 0:
 		combo_count = 0
+		if is_frenzy:
+			is_frenzy = false
+			frenzy_changed.emit(false)
 		combo_changed.emit(combo_count)
 
 

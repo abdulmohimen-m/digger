@@ -71,10 +71,16 @@ This document logs all the features, logic, and polish implemented during this d
 - **Camera Configuration:** Viewport is scaled up 4x using a `Camera2D` with boundaries limiting horizontal view within play bounds. Crisp smoothing (`position_smoothing_speed = 8.0`) enabled.
 - **Noise Shake:** Attacking or hitting a wall/boundary triggers a smooth 6.0px screen shake, powered by a custom `FastNoiseLite` generator that decays linearly.
 
-### 6. Combo System
+### 6. Arcade Combo & Frenzy System
 - **Arcade Indicator:** A `COMBO xN` label sits on the HUD.
 - **Rules:** Increments with consecutive block digests (including battery collections). Resets to `0` instantly if the player stops moving (idles), moves into an empty tile, or bumps a wall.
 - **Bounce Juice:** Tweened scale-punch visual bounce occurs on each increment.
+- **🔥 FRENZY MODE (COMBO x10+):**
+  - **Activation:** Automatically triggers at **COMBO x10** and stays active as long as the continuous streak is maintained (`combo >= 10`).
+  - **Zero Battery Consumption:** All digging steps cost **0.0 battery**.
+  - **Instant 1-Hit Drilling:** Bypasses rock multi-hit locks, destroying Rocky Tiles instantly in **1 hit**.
+  - **Super-Drilling Propulsion:** Drilling speed more than doubles from `53.0` to `120.0`.
+  - **HUD Indicator:** Transforms into `"🔥 FRENZY x10 🔥"` with a pulsing Cyan visual display.
 
 ### 8. Directional Lunge & Squash/Stretch Hit Animation
 - **Universal Physical Juice:** Applied across all dirt digs, rock hits, undiggable bumps, and wall boundary impacts via `_play_impact_lunge(dir)`.
