@@ -1,12 +1,14 @@
 extends TileMapLayer
 
 const TILE_BATTERY = Vector2i(47, 9)
+const TILE_BOMB = Vector2i(45, 9)
 
 func _ready() -> void:
-	# Place a few battery recharge tiles inside the starting dirt block for testing
+	# Place a few battery recharge and bomb tiles inside the starting dirt block for testing
 	set_cell(Vector2i(3, 5), 1, TILE_BATTERY)
-	set_cell(Vector2i(7, 6), 1, TILE_BATTERY)
+	set_cell(Vector2i(7, 6), 1, TILE_BOMB)
 	set_cell(Vector2i(5, 8), 1, TILE_BATTERY)
+	set_cell(Vector2i(8, 7), 1, TILE_BOMB)
 
 ## Returns true if a diggable tile was found and erased at the given cell.
 func try_dig(cell: Vector2i) -> bool:

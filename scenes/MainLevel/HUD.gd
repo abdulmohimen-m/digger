@@ -8,7 +8,9 @@ const COLOR_EMPTY: Color = Color(0.18, 0.18, 0.20)  # near-black
 
 # Array of Arrays: [[left_rect, right_rect], ...]
 var _shards: Array[Array] = []
+var _bomb_rects: Array[ColorRect] = []
 var _combo_label: Label
+var _bomb_container: HBoxContainer
 
 @onready var _container: HBoxContainer = $BatteryContainer
 
@@ -35,12 +37,24 @@ func _ready() -> void:
 		
 		_shards.append([left_half, right_half])
 
+	# Setup Bomb Container
+	_bomb_container = HBoxContainer.new()
+	_bomb_container.position = Vector2(10, 30)
+	_bomb_container.add_theme_constant_override("separation", 5)
+	for i in 3:
+		var rect := ColorRect.new()
+		rect.custom_minimum_size = Vector2(14, 14)
+		rect.color = Color(0.9, 0.1, 0.1) # Bright red for bombs
+		_bomb_container.add_child(rect)
+		_bomb_rects.append(rect)
+	add_child(_bomb_container)
+
 	# Wait one frame so Player._ready() has had time to run and join its group
 	call_deferred("_connect_to_player")
 
 	# Initialize combo label dynamically
 	_combo_label = Label.new()
-	_combo_label.position = Vector2(10, 30)
+	_combo_label.position = Vector2(10, 50)
 	_combo_label.text = ""
 	_combo_label.add_theme_color_override("font_color", Color("ffd700"))
 	_combo_label.add_theme_font_size_override("font_size", 14)
@@ -52,8 +66,10 @@ func _connect_to_player() -> void:
 	if player:
 		player.battery_changed.connect(_on_battery_changed)
 		player.combo_changed.connect(_on_combo_changed)
+		player.bombs_changed.connect(_on_bombs_changed)
 		# Sync immediately with current battery state
 		player.battery_changed.emit(player.battery, player.MAX_BATTERY)
+		player.bombs_changed.emit(player.bombs, player.MAX_BOMBS)
 		_on_combo_changed(player.combo_count)
 
 
@@ -67,6 +83,14 @@ func _on_battery_changed(current: float, _maximum: float) -> void:
 		
 		left_rect.color = COLOR_FULL if (2 * i) < half_shards_filled else COLOR_EMPTY
 		right_rect.color = COLOR_FULL if (2 * i + 1) < half_shards_filled else COLOR_EMPTY
+
+
+func _on_bombs_changed(current: int, _maximum: int) -> void:
+	for i in _bomb_rects.size():
+		if i < current:
+			_bomb_rects[i].color = Color(0.9, 0.1, 0.1) # Bright red
+		else:
+			_bomb_rects[i].color = COLOR_EMPTY
 
 
 func _on_combo_changed(combo: int) -> void:

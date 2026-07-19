@@ -1,10 +1,12 @@
 extends CharacterBody2D
 
 signal battery_changed(current: float, maximum: float)
+signal bombs_changed(current: int, maximum: int)
 signal dug_tile(pos: Vector2)
 signal moved_freely(pos: Vector2)
 signal hit_wall(pos: Vector2)
 signal collected_battery(pos: Vector2)
+signal detonated_bomb(pos: Vector2)
 signal combo_changed(combo: int)
 
 const TILE_SIZE: int = 16
@@ -13,6 +15,9 @@ const MOVE_SPEED_FREE: float = 160.0 # ~0.1s per tile
 const MOVE_SPEED_DIRT: float = 53.0  # ~0.3s per tile
 const TILE_BATTERY: Vector2i = Vector2i(47, 9)
 const BATTERY_RECHARGE_AMOUNT: float = 3.0
+const TILE_BOMB: Vector2i = Vector2i(45, 9)
+const MAX_BOMBS: int = 3
+const BOMB_BATTERY_COST: float = 3.0
 
 # Map horizontal bounds (tile columns 1-10 are playable)
 const MAP_MIN_X: float = 1.0 * TILE_SIZE + TILE_SIZE * 0.5   # center of col 1
@@ -21,6 +26,7 @@ const MAP_MAX_X: float = 10.0 * TILE_SIZE + TILE_SIZE * 0.5  # center of col 10
 @export var infinite_battery: bool = false
 
 var battery: float = MAX_BATTERY
+var bombs: int = MAX_BOMBS
 var combo_count: int = 0
 var _is_moving: bool = false
 var _target_position: Vector2
@@ -37,6 +43,7 @@ func _ready() -> void:
 	position = position.snapped(Vector2(TILE_SIZE, TILE_SIZE)) + Vector2(TILE_SIZE, TILE_SIZE) * 0.5
 	_target_position = global_position
 	battery_changed.emit(battery, MAX_BATTERY)
+	bombs_changed.emit(bombs, MAX_BOMBS)
 
 
 func _physics_process(delta: float) -> void:
@@ -55,6 +62,10 @@ func _physics_process(delta: float) -> void:
 
 	# Frozen if battery is out and we are not currently moving
 	if battery <= 0.0:
+		return
+
+	if Input.is_action_just_pressed("ui_accept"):
+		_detonate_bomb()
 		return
 
 	var dir := Vector2i.ZERO
@@ -82,7 +93,7 @@ func _try_move(dir: Vector2i) -> void:
 	var source_id: int = _dirt_layer.get_cell_source_id(target_cell)
 	var has_tile: bool = source_id != -1
 
-	# Intercept battery recharge tiles
+	# Intercept collectibles
 	if has_tile:
 		var atlas: Vector2i = _dirt_layer.get_cell_atlas_coords(target_cell)
 		if atlas == TILE_BATTERY:
@@ -94,6 +105,15 @@ func _try_move(dir: Vector2i) -> void:
 			_is_digging = true
 			_increment_combo()
 			collected_battery.emit(target_pos)
+			return
+		elif atlas == TILE_BOMB:
+			_dirt_layer.erase_cell(target_cell)
+			_collect_bomb()
+			_target_position = target_pos
+			_current_move_speed = MOVE_SPEED_DIRT
+			_is_moving = true
+			_is_digging = true
+			_increment_combo()
 			return
 
 	match dir:
@@ -176,3 +196,61 @@ func _reset_combo() -> void:
 	if combo_count > 0:
 		combo_count = 0
 		combo_changed.emit(combo_count)
+
+
+func _collect_bomb() -> void:
+	if bombs < MAX_BOMBS:
+		bombs += 1
+		bombs_changed.emit(bombs, MAX_BOMBS)
+
+
+func _detonate_bomb() -> void:
+	if bombs <= 0 or battery < BOMB_BATTERY_COST:
+		return
+		
+	bombs -= 1
+	bombs_changed.emit(bombs, MAX_BOMBS)
+	_spend_battery(BOMB_BATTERY_COST)
+	
+	var bomb_pos := global_position
+	var current_cell: Vector2i = _dirt_layer.local_to_map(_dirt_layer.to_local(bomb_pos))
+	
+	# Create bomb sprite
+	var bomb_sprite := Sprite2D.new()
+	bomb_sprite.texture = _sprite.texture
+	bomb_sprite.region_enabled = true
+	# Atlas coordinate (45, 9) with 1px spacing: x = 45 * 17 = 765, y = 9 * 17 = 153
+	bomb_sprite.region_rect = Rect2(765, 153, 16, 16)
+	bomb_sprite.global_position = bomb_pos
+	bomb_sprite.z_index = 5
+	get_parent().add_child(bomb_sprite)
+	
+	# Blinking animation
+	var tween := bomb_sprite.create_tween()
+	tween.set_loops(4)
+	tween.tween_property(bomb_sprite, "modulate", Color(1, 0, 0), 0.25)
+	tween.tween_property(bomb_sprite, "modulate", Color(1, 1, 1), 0.25)
+	
+	# Wait for 2 seconds
+	await get_tree().create_timer(2.0).timeout
+	
+	if is_instance_valid(bomb_sprite):
+		bomb_sprite.queue_free()
+	
+	# Clear 3x3 area
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			var target_cell: Vector2i = current_cell + Vector2i(dx, dy)
+			if _dirt_layer.get_cell_source_id(target_cell) != -1:
+				var atlas: Vector2i = _dirt_layer.get_cell_atlas_coords(target_cell)
+				if atlas != Vector2i(3, 0):
+					_dirt_layer.erase_cell(target_cell)
+					
+	# Check if player is caught in the blast (Chebyshev distance in grid cells)
+	var player_cell := _dirt_layer.local_to_map(_dirt_layer.to_local(global_position))
+	var cell_diff := player_cell - current_cell
+	if abs(cell_diff.x) <= 1 and abs(cell_diff.y) <= 1:
+		_spend_battery(5.0)
+					
+	detonated_bomb.emit(bomb_pos)
+
