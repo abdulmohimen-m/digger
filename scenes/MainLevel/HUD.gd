@@ -8,6 +8,7 @@ const COLOR_EMPTY: Color = Color(0.18, 0.18, 0.20)  # near-black
 
 # Array of Arrays: [[left_rect, right_rect], ...]
 var _shards: Array[Array] = []
+var _combo_label: Label
 
 @onready var _container: HBoxContainer = $BatteryContainer
 
@@ -37,13 +38,23 @@ func _ready() -> void:
 	# Wait one frame so Player._ready() has had time to run and join its group
 	call_deferred("_connect_to_player")
 
+	# Initialize combo label dynamically
+	_combo_label = Label.new()
+	_combo_label.position = Vector2(10, 30)
+	_combo_label.text = ""
+	_combo_label.add_theme_color_override("font_color", Color("ffd700"))
+	_combo_label.add_theme_font_size_override("font_size", 14)
+	add_child(_combo_label)
+
 
 func _connect_to_player() -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if player:
 		player.battery_changed.connect(_on_battery_changed)
+		player.combo_changed.connect(_on_combo_changed)
 		# Sync immediately with current battery state
 		player.battery_changed.emit(player.battery, player.MAX_BATTERY)
+		_on_combo_changed(player.combo_count)
 
 
 func _on_battery_changed(current: float, _maximum: float) -> void:
@@ -56,4 +67,16 @@ func _on_battery_changed(current: float, _maximum: float) -> void:
 		
 		left_rect.color = COLOR_FULL if (2 * i) < half_shards_filled else COLOR_EMPTY
 		right_rect.color = COLOR_FULL if (2 * i + 1) < half_shards_filled else COLOR_EMPTY
+
+
+func _on_combo_changed(combo: int) -> void:
+	if combo >= 1:
+		_combo_label.text = "COMBO x" + str(combo)
+		
+		# Quick arcade scale punch
+		_combo_label.scale = Vector2(1.2, 1.2)
+		var tween = create_tween()
+		tween.tween_property(_combo_label, "scale", Vector2.ONE, 0.15)
+	else:
+		_combo_label.text = ""
 

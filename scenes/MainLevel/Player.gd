@@ -5,6 +5,8 @@ signal dug_tile(pos: Vector2)
 signal moved_freely(pos: Vector2)
 signal hit_wall(pos: Vector2)
 signal collected_battery(pos: Vector2)
+signal combo_changed(combo: int)
+
 const TILE_SIZE: int = 16
 const MAX_BATTERY: float = 10.0
 const MOVE_SPEED_FREE: float = 160.0 # ~0.1s per tile
@@ -19,11 +21,14 @@ const MAP_MAX_X: float = 10.0 * TILE_SIZE + TILE_SIZE * 0.5  # center of col 10
 @export var infinite_battery: bool = false
 
 var battery: float = MAX_BATTERY
+var combo_count: int = 0
 var _is_moving: bool = false
 var _target_position: Vector2
 var _current_move_speed: float = MOVE_SPEED_FREE
+var _is_digging: bool = false
 
 @onready var _dirt_layer: TileMapLayer = $"../Tilemaps/DirtLayer"
+@onready var _sprite: Sprite2D = $Sprite2D
 
 
 func _ready() -> void:
@@ -37,8 +42,15 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if _is_moving:
 		global_position = global_position.move_toward(_target_position, _current_move_speed * delta)
+		if _is_digging:
+			_sprite.position = Vector2(
+				randf_range(-1.5, 1.5),
+				randf_range(-1.5, 1.5)
+			)
 		if global_position == _target_position:
 			_is_moving = false
+			_is_digging = false
+			_sprite.position = Vector2.ZERO
 		return
 
 	# Frozen if battery is out and we are not currently moving
@@ -56,6 +68,8 @@ func _physics_process(delta: float) -> void:
 		dir = Vector2i(0, -1)
 
 	if dir == Vector2i.ZERO:
+		if combo_count > 0:
+			_reset_combo()
 		return
 
 	_try_move(dir)
@@ -77,6 +91,8 @@ func _try_move(dir: Vector2i) -> void:
 			_target_position = target_pos
 			_current_move_speed = MOVE_SPEED_DIRT
 			_is_moving = true
+			_is_digging = true
+			_increment_combo()
 			collected_battery.emit(target_pos)
 			return
 
@@ -86,9 +102,13 @@ func _try_move(dir: Vector2i) -> void:
 				_dirt_layer.erase_cell(target_cell)
 				_spend_battery(1.0)
 				_current_move_speed = MOVE_SPEED_DIRT
+				_is_digging = true
+				_increment_combo()
 				dug_tile.emit(target_pos)
 			else:
 				_current_move_speed = MOVE_SPEED_FREE
+				_is_digging = false
+				_reset_combo()
 				moved_freely.emit(target_pos)
 			_target_position = target_pos
 			_is_moving = true
@@ -99,13 +119,18 @@ func _try_move(dir: Vector2i) -> void:
 					_dirt_layer.erase_cell(target_cell)
 					_spend_battery(0.5)
 					_current_move_speed = MOVE_SPEED_DIRT
+					_is_digging = true
+					_increment_combo()
 					dug_tile.emit(target_pos)
 				else:
 					_current_move_speed = MOVE_SPEED_FREE
+					_is_digging = false
+					_reset_combo()
 					moved_freely.emit(target_pos)
 				_target_position = target_pos
 				_is_moving = true
 			else:
+				_reset_combo()
 				hit_wall.emit(target_pos)
 
 		_:                # ---- Horizontal: blocked by map edges, dig if tile present (0.5 battery) ----
@@ -115,13 +140,18 @@ func _try_move(dir: Vector2i) -> void:
 					_dirt_layer.erase_cell(target_cell)
 					_spend_battery(0.5)
 					_current_move_speed = MOVE_SPEED_DIRT
+					_is_digging = true
+					_increment_combo()
 					dug_tile.emit(target_pos)
 				else:
 					_current_move_speed = MOVE_SPEED_FREE
+					_is_digging = false
+					_reset_combo()
 					moved_freely.emit(target_pos)
 				_target_position = target_pos
 				_is_moving = true
 			else:
+				_reset_combo()
 				hit_wall.emit(target_pos)
 
 
@@ -135,3 +165,14 @@ func _spend_battery(amount: float) -> void:
 func _recharge_battery(amount: float) -> void:
 	battery = minf(MAX_BATTERY, battery + amount)
 	battery_changed.emit(battery, MAX_BATTERY)
+
+
+func _increment_combo() -> void:
+	combo_count += 1
+	combo_changed.emit(combo_count)
+
+
+func _reset_combo() -> void:
+	if combo_count > 0:
+		combo_count = 0
+		combo_changed.emit(combo_count)
