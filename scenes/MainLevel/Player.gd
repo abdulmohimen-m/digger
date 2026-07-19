@@ -226,9 +226,10 @@ func _detonate_bomb() -> void:
 	bomb_sprite.z_index = 5
 	get_parent().add_child(bomb_sprite)
 	
-	bomb_sprite.scale = Vector2(0.5, 0.5)
+	bomb_sprite.scale = Vector2(0.1, 0.1)
 	var scale_tween := bomb_sprite.create_tween()
-	scale_tween.tween_property(bomb_sprite, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+	scale_tween.tween_property(bomb_sprite, "scale", Vector2(1.5, 1.5), 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	scale_tween.tween_property(bomb_sprite, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	
 	placed_bomb.emit(bomb_pos)
 	
