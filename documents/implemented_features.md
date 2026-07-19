@@ -23,7 +23,12 @@ This document logs all the features, logic, and polish implemented during this d
 - **3x3 Blast Radius:** Obliterates all breakable tiles and items in a 3x3 area around the bomb's origin. Indestructible side walls are immune.
 - **Blast Penalty:** Standing inside the 3x3 blast area when it detonates deals a **5.0 battery damage penalty** to the player.
 
-### 5. Bomb Inventory HUD UI
+### 5. Undiggable Tiles System
+- **Hard Obstacles:** Undiggable tiles (sprite coordinates `(39, 15)`) block regular drilling attempts.
+- **Drill Response:** Drilling into an undiggable tile blocks movement, resets combo, emits `hit_wall` feedback (camera shake and sound effect), and consumes **0 battery**.
+- **Bomb Destructible:** Unlike perimeter walls, undiggable tiles **can** be destroyed using bombs.
+
+### 6. Bomb Inventory HUD UI
 - **Visuals:** Shows 3 square red indicators directly below the battery container.
 - **Dynamic State:** Squares transition from Bright Red (available) to Dark Grey (empty) as bombs are used or picked up.
 

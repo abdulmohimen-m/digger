@@ -17,6 +17,7 @@ const MOVE_SPEED_DIRT: float = 53.0  # ~0.3s per tile
 const TILE_BATTERY: Vector2i = Vector2i(47, 9)
 const BATTERY_RECHARGE_AMOUNT: float = 3.0
 const TILE_BOMB: Vector2i = Vector2i(45, 9)
+const TILE_UNDIGGABLE: Vector2i = Vector2i(39, 15)
 const MAX_BOMBS: int = 3
 const BOMB_BATTERY_COST: float = 3.0
 
@@ -115,6 +116,10 @@ func _try_move(dir: Vector2i) -> void:
 			_is_moving = true
 			_is_digging = true
 			_increment_combo()
+			return
+		elif atlas == TILE_UNDIGGABLE:
+			_reset_combo()
+			hit_wall.emit(target_pos)
 			return
 
 	match dir:
