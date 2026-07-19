@@ -49,16 +49,27 @@ func _spawn_vfx(scene: PackedScene, pos: Vector2, fallback_color: Color) -> void
 			vfx_instance.global_position = pos
 		add_child(vfx_instance)
 	else:
-		# Fallback placeholder logic
-		var rect = ColorRect.new()
-		rect.color = fallback_color
-		rect.size = Vector2(16, 16)
-		rect.position = pos - Vector2(8, 8) # Center it
-		add_child(rect)
+		# Create a dynamic, blocky shard burst using CPUParticles2D
+		var particles = CPUParticles2D.new()
+		particles.global_position = pos
+		particles.amount = 8
+		particles.explosiveness = 1.0
+		particles.one_shot = true
+		particles.lifetime = 0.4
+		particles.spread = 180.0
+		particles.gravity = Vector2(0, 300.0) # Downward gravity
+		particles.initial_velocity_min = 30.0
+		particles.initial_velocity_max = 60.0
+		particles.scale_amount_min = 2.0
+		particles.scale_amount_max = 4.0
+		particles.color = fallback_color
 		
-		var tween = create_tween()
-		tween.tween_property(rect, "modulate:a", 0.0, 0.2)
-		tween.tween_callback(rect.queue_free)
+		add_child(particles)
+		particles.emitting = true
+		
+		# Clean up after lifetime ends
+		var timer = get_tree().create_timer(particles.lifetime + 0.1)
+		timer.timeout.connect(particles.queue_free)
 
 func _play_sfx(stream: AudioStream, fallback_name: String) -> void:
 	if stream:
