@@ -23,6 +23,8 @@ func _ready() -> void:
 		player.moved_freely.connect(_on_player_moved_freely)
 		player.hit_wall.connect(_on_player_hit_wall)
 		player.collected_battery.connect(_on_player_collected_battery)
+		player.placed_bomb.connect(_on_player_placed_bomb)
+		player.detonated_bomb.connect(_on_player_detonated_bomb)
 
 func _on_player_dug_tile(pos: Vector2) -> void:
 	_spawn_vfx(dig_vfx, pos, Color("8b5a2b")) # Brown placeholder
@@ -80,3 +82,34 @@ func _play_sfx(stream: AudioStream, fallback_name: String) -> void:
 		audio_player.finished.connect(audio_player.queue_free)
 	else:
 		print("SFX Played: ", fallback_name)
+
+
+func _on_player_placed_bomb(pos: Vector2) -> void:
+	_play_sfx(null, "Deep Thud (Bomb Placed)")
+
+
+func _on_player_detonated_bomb(pos: Vector2) -> void:
+	_play_sfx(null, "Loud Boom (Explosion)")
+	if _camera and _camera.has_method("shake"):
+		_camera.shake(10.0)
+		
+	var particles = CPUParticles2D.new()
+	particles.global_position = pos
+	particles.amount = 30
+	particles.explosiveness = 1.0
+	particles.one_shot = true
+	particles.lifetime = 0.6
+	particles.spread = 180.0
+	particles.gravity = Vector2(0, 300.0)
+	particles.initial_velocity_min = 80.0
+	particles.initial_velocity_max = 150.0
+	particles.scale_amount_min = 2.0
+	particles.scale_amount_max = 6.0
+	particles.color = Color(1.0, 0.4, 0.0) # Fiery Orange/Red
+	
+	add_child(particles)
+	particles.emitting = true
+	
+	var timer = get_tree().create_timer(particles.lifetime + 0.1)
+	timer.timeout.connect(particles.queue_free)
+

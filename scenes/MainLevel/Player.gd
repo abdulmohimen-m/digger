@@ -7,6 +7,7 @@ signal moved_freely(pos: Vector2)
 signal hit_wall(pos: Vector2)
 signal collected_battery(pos: Vector2)
 signal detonated_bomb(pos: Vector2)
+signal placed_bomb(pos: Vector2)
 signal combo_changed(combo: int)
 
 const TILE_SIZE: int = 16
@@ -224,6 +225,12 @@ func _detonate_bomb() -> void:
 	bomb_sprite.global_position = bomb_pos
 	bomb_sprite.z_index = 5
 	get_parent().add_child(bomb_sprite)
+	
+	bomb_sprite.scale = Vector2(0.5, 0.5)
+	var scale_tween := bomb_sprite.create_tween()
+	scale_tween.tween_property(bomb_sprite, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+	
+	placed_bomb.emit(bomb_pos)
 	
 	# Blinking animation
 	var tween := bomb_sprite.create_tween()
