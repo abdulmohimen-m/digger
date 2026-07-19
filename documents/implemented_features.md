@@ -19,7 +19,8 @@ This document logs all the features, logic, and polish implemented during this d
 
 ### 4. Bomb & Pickup System
 - **Bomb Pickups:** Bomb canister tiles (sprite coordinates `(45, 9)`) spawned in the grid layout. Collecting one restores **1 bomb** (capped at 3).
-- **Placement & Fuse:** Pressing `ui_accept` (Space) consumes **3.0 battery** and **1 bomb** to plant an explosive on the current tile. The bomb ticks down on a **2.0-second fuse** while flashing red/white.
+- **On-The-Move Placement:** Pressing `ui_accept` (Space) consumes **3.0 battery** and **1 bomb** to plant an explosive on the current grid tile center (`snapped(16, 16) + (8, 8)`) **without stopping vehicle movement**.
+- **Fuse Timer:** The bomb ticks down on a **2.0-second fuse** while flashing red/white with a bouncy drop pop.
 - **3x3 Blast Radius:** Obliterates all breakable tiles and items in a 3x3 area around the bomb's origin. Indestructible side walls are immune.
 - **Blast Penalty:** Standing inside the 3x3 blast area when it detonates deals a **5.0 battery damage penalty** to the player.
 

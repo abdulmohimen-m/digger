@@ -55,6 +55,13 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# Frozen if battery is out
+	if battery <= 0.0:
+		return
+
+	if Input.is_action_just_pressed("ui_accept"):
+		_detonate_bomb()
+
 	if _is_moving or _is_busy:
 		if _is_moving:
 			global_position = global_position.move_toward(_target_position, _current_move_speed * delta)
@@ -71,10 +78,6 @@ func _physics_process(delta: float) -> void:
 
 	# Frozen if battery is out and we are not currently moving
 	if battery <= 0.0:
-		return
-
-	if Input.is_action_just_pressed("ui_accept"):
-		_detonate_bomb()
 		return
 
 	var dir := Vector2i.ZERO
@@ -273,8 +276,8 @@ func _detonate_bomb() -> void:
 	bombs_changed.emit(bombs, MAX_BOMBS)
 	_spend_battery(BOMB_BATTERY_COST)
 	
-	var bomb_pos := global_position
-	var current_cell: Vector2i = _dirt_layer.local_to_map(_dirt_layer.to_local(bomb_pos))
+	var current_cell: Vector2i = _dirt_layer.local_to_map(_dirt_layer.to_local(global_position))
+	var bomb_pos: Vector2 = _dirt_layer.to_global(_dirt_layer.map_to_local(current_cell))
 	
 	# Create bomb sprite
 	var bomb_sprite := Sprite2D.new()
