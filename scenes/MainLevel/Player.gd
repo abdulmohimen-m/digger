@@ -4,7 +4,8 @@ signal battery_changed(current: float, maximum: float)
 
 const TILE_SIZE: int = 16
 const MAX_BATTERY: float = 10.0
-const MOVE_SPEED: float = 120.0  # speed of slide in pixels/sec
+const MOVE_SPEED_FREE: float = 160.0 # ~0.1s per tile
+const MOVE_SPEED_DIRT: float = 53.0  # ~0.3s per tile
 const TILE_BATTERY: Vector2i = Vector2i(47, 9)
 const BATTERY_RECHARGE_AMOUNT: float = 3.0
 
@@ -15,6 +16,7 @@ const MAP_MAX_X: float = 10.0 * TILE_SIZE + TILE_SIZE * 0.5  # center of col 10
 var battery: float = MAX_BATTERY
 var _is_moving: bool = false
 var _target_position: Vector2
+var _current_move_speed: float = MOVE_SPEED_FREE
 
 @onready var _dirt_layer: TileMapLayer = $"../Tilemaps/DirtLayer"
 
@@ -29,7 +31,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	if _is_moving:
-		global_position = global_position.move_toward(_target_position, MOVE_SPEED * delta)
+		global_position = global_position.move_toward(_target_position, _current_move_speed * delta)
 		if global_position == _target_position:
 			_is_moving = false
 		return
@@ -68,6 +70,7 @@ func _try_move(dir: Vector2i) -> void:
 			_dirt_layer.erase_cell(target_cell)
 			_recharge_battery(BATTERY_RECHARGE_AMOUNT)
 			_target_position = target_pos
+			_current_move_speed = MOVE_SPEED_FREE
 			_is_moving = true
 			return
 
@@ -76,6 +79,9 @@ func _try_move(dir: Vector2i) -> void:
 			if has_tile:
 				_dirt_layer.erase_cell(target_cell)
 				_spend_battery(1.0)
+				_current_move_speed = MOVE_SPEED_DIRT
+			else:
+				_current_move_speed = MOVE_SPEED_FREE
 			_target_position = target_pos
 			_is_moving = true
 
@@ -84,6 +90,9 @@ func _try_move(dir: Vector2i) -> void:
 				if has_tile:
 					_dirt_layer.erase_cell(target_cell)
 					_spend_battery(0.5)
+					_current_move_speed = MOVE_SPEED_DIRT
+				else:
+					_current_move_speed = MOVE_SPEED_FREE
 				_target_position = target_pos
 				_is_moving = true
 
@@ -93,6 +102,9 @@ func _try_move(dir: Vector2i) -> void:
 				if has_tile:
 					_dirt_layer.erase_cell(target_cell)
 					_spend_battery(0.5)
+					_current_move_speed = MOVE_SPEED_DIRT
+				else:
+					_current_move_speed = MOVE_SPEED_FREE
 				_target_position = target_pos
 				_is_moving = true
 
