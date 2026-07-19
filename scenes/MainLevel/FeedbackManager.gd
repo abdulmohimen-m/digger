@@ -26,6 +26,8 @@ func _ready() -> void:
 		player.placed_bomb.connect(_on_player_placed_bomb)
 		player.detonated_bomb.connect(_on_player_detonated_bomb)
 		player.hit_rock.connect(_on_player_hit_rock)
+		player.low_battery_warning.connect(_on_player_low_battery_warning)
+		player.battery_depleted.connect(_on_player_battery_depleted)
 
 func _on_player_dug_tile(pos: Vector2) -> void:
 	_spawn_vfx(dig_vfx, pos, Color("8b5a2b")) # Brown placeholder
@@ -139,5 +141,75 @@ func _on_player_hit_rock(pos: Vector2) -> void:
 	
 	var timer = get_tree().create_timer(particles.lifetime + 0.1)
 	timer.timeout.connect(particles.queue_free)
+
+
+func _on_player_low_battery_warning(is_low: bool) -> void:
+	if is_low:
+		_play_sfx(null, "⚠️ Low Battery Alarm Beep ⚠️")
+		# Sputtering dark smoke burst around vehicle
+		var player = get_tree().get_first_node_in_group("player")
+		if player:
+			var particles = CPUParticles2D.new()
+			particles.global_position = player.global_position
+			particles.amount = 10
+			particles.explosiveness = 0.8
+			particles.one_shot = true
+			particles.lifetime = 0.6
+			particles.spread = 360.0
+			particles.gravity = Vector2(0, -60.0) # Rising smoke
+			particles.initial_velocity_min = 15.0
+			particles.initial_velocity_max = 35.0
+			particles.scale_amount_min = 2.0
+			particles.scale_amount_max = 4.0
+			particles.color = Color(0.2, 0.2, 0.2, 0.7) # Dark sputtering smoke
+			
+			add_child(particles)
+			particles.emitting = true
+			var timer = get_tree().create_timer(particles.lifetime + 0.1)
+			timer.timeout.connect(particles.queue_free)
+
+
+func _on_player_battery_depleted(pos: Vector2) -> void:
+	_play_sfx(null, "🛑 POWER DOWN ENGINE STALL 🛑")
+	if _camera and _camera.has_method("shake"):
+		_camera.shake(8.0)
+		
+	# Spawn electric spark & smoke explosion
+	var smoke = CPUParticles2D.new()
+	smoke.global_position = pos
+	smoke.amount = 25
+	smoke.explosiveness = 0.9
+	smoke.one_shot = true
+	smoke.lifetime = 0.9
+	smoke.spread = 180.0
+	smoke.gravity = Vector2(0, -80.0) # Rising dark smoke
+	smoke.initial_velocity_min = 30.0
+	smoke.initial_velocity_max = 70.0
+	smoke.scale_amount_min = 3.0
+	smoke.scale_amount_max = 6.0
+	smoke.color = Color(0.15, 0.15, 0.18, 0.8) # Heavy dark smoke cloud
+	add_child(smoke)
+	smoke.emitting = true
+	var timer1 = get_tree().create_timer(smoke.lifetime + 0.1)
+	timer1.timeout.connect(smoke.queue_free)
+
+	var sparks = CPUParticles2D.new()
+	sparks.global_position = pos
+	sparks.amount = 16
+	sparks.explosiveness = 1.0
+	sparks.one_shot = true
+	sparks.lifetime = 0.4
+	sparks.spread = 180.0
+	sparks.gravity = Vector2(0, 200.0)
+	sparks.initial_velocity_min = 60.0
+	sparks.initial_velocity_max = 120.0
+	sparks.scale_amount_min = 1.5
+	sparks.scale_amount_max = 3.5
+	sparks.color = Color(0.2, 0.9, 1.0) # Electric cyan sparks
+	add_child(sparks)
+	sparks.emitting = true
+	var timer2 = get_tree().create_timer(sparks.lifetime + 0.1)
+	timer2.timeout.connect(sparks.queue_free)
+
 
 

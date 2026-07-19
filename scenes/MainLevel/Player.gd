@@ -11,6 +11,8 @@ signal placed_bomb(pos: Vector2)
 signal hit_rock(pos: Vector2)
 signal combo_changed(combo: int)
 signal frenzy_level_changed(level: int)
+signal low_battery_warning(is_low: bool)
+signal battery_depleted(pos: Vector2)
 
 const TILE_SIZE: int = 16
 const MAX_BATTERY: float = 10.0
@@ -28,6 +30,7 @@ const TILE_DIRT: Vector2i = Vector2i(32, 15)
 const MAX_BOMBS: int = 3
 const BOMB_BATTERY_COST: float = 3.0
 const ROCK_DRILL_DELAY: float = 0.4
+const LOW_BATTERY_THRESHOLD: float = 2.5
 
 # Map horizontal bounds (tile columns 1-10 are playable)
 const MAP_MIN_X: float = 1.0 * TILE_SIZE + TILE_SIZE * 0.5   # center of col 1
@@ -43,6 +46,8 @@ var _target_position: Vector2
 var _current_move_speed: float = MOVE_SPEED_FREE
 var _is_digging: bool = false
 var _is_busy: bool = false
+var _is_low_battery: bool = false
+var _is_depleted: bool = false
 var frenzy_level: int = 0
 var is_frenzy: bool:
 	get: return frenzy_level >= 1
@@ -261,15 +266,56 @@ func _play_impact_lunge(dir: Vector2i) -> void:
 
 
 func _spend_battery(amount: float) -> void:
-	if infinite_battery or is_frenzy:
+	if infinite_battery or is_frenzy or _is_depleted:
 		return
 	battery = maxf(0.0, battery - amount)
 	battery_changed.emit(battery, MAX_BATTERY)
+	_check_battery_state()
 
 
 func _recharge_battery(amount: float) -> void:
+	if _is_depleted:
+		return
 	battery = minf(MAX_BATTERY, battery + amount)
 	battery_changed.emit(battery, MAX_BATTERY)
+	_check_battery_state()
+
+
+func _check_battery_state() -> void:
+	var is_low: bool = battery <= LOW_BATTERY_THRESHOLD and battery > 0.0
+	if is_low != _is_low_battery:
+		_is_low_battery = is_low
+		low_battery_warning.emit(_is_low_battery)
+		
+	if battery <= 0.0 and not _is_depleted:
+		_trigger_battery_depletion()
+
+
+func _trigger_battery_depletion() -> void:
+	_is_depleted = true
+	_is_busy = true
+	if _is_low_battery:
+		_is_low_battery = false
+		low_battery_warning.emit(false)
+		
+	battery_depleted.emit(global_position)
+	
+	# Breakdown Animation (1.0s total): Stutter shake + Dim sprite to unpowered gray
+	var tween := create_tween()
+	tween.set_loops(4)
+	tween.tween_property(_sprite, "position", Vector2(randf_range(-3.0, 3.0), randf_range(-3.0, 3.0)), 0.06)
+	tween.tween_property(_sprite, "position", Vector2.ZERO, 0.06)
+	
+	var scale_tween := create_tween()
+	scale_tween.tween_property(_sprite, "scale", Vector2(1.3, 0.7), 0.1)
+	scale_tween.tween_property(_sprite, "scale", Vector2(0.8, 1.2), 0.1)
+	scale_tween.tween_property(_sprite, "scale", Vector2.ONE, 0.1)
+	
+	var color_tween := create_tween()
+	color_tween.tween_property(_sprite, "modulate", Color(0.25, 0.25, 0.30), 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	
+	await get_tree().create_timer(1.0).timeout
+	_is_busy = false
 
 
 func _increment_combo() -> void:
