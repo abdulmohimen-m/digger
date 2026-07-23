@@ -78,6 +78,12 @@ This document logs all the features, logic, and polish implemented during this d
 
 ### 7. Bomb Inventory HUD UI
 - **Visuals:** Shows 3 square red indicators directly below the battery container.
+
+### 8. Mine Hazards System
+- **Subtle Tile Signpost:** Mine tiles (atlas coordinate `(33, 15)`) spawn with subtle dirt-like signposting across all biomes (4% Biome 1, 6% Biome 2, 10% Biome 3).
+- **Instant Explosion & Battery Damage:** Digging or stepping on a mine triggers an instant explosion, deducting a **4.0 battery penalty**, resetting the combo, erasing the tile, and emitting a heavy 12.0px camera shake and fiery red/orange particle explosion (`hit_mine` signal).
+- **Bomb Clearing:** Player bombs safely obliterate mine tiles in their 3x3 blast radius without triggering penalties.
+- **Frenzy Immunity:** Reaching Frenzy Mode (combo streak $\ge 10$) allows the drilling vehicle to blast safely through mines with 0 battery cost.
 - **Dynamic State:** Squares transition from Bright Red (available) to Dark Grey (empty) as bombs are used or picked up.
 
 ---

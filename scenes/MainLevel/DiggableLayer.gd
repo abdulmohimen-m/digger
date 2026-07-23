@@ -10,6 +10,7 @@ const TILE_UNDIGGABLE = Vector2i(39, 15)
 const TILE_ROCK = Vector2i(10, 17)
 const TILE_CRACKED_ROCK = Vector2i(11, 17)
 const TILE_DIRT = Vector2i(32, 15)
+const TILE_MINE = Vector2i(33, 15)
 const TILE_WALL = Vector2i(3, 0)
 
 const SOURCE_ID: int = 1
@@ -63,35 +64,41 @@ func generate_map() -> void:
 
 			# --- BIOME 1: Normal Soil (Depth 4 to 150) ---
 			if y <= 150:
-				if roll < 0.05:
+				if roll < 0.04:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_MINE)
+				elif roll < 0.09:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
-				elif roll < 0.10:
+				elif roll < 0.14:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
-				elif roll < 0.15:
+				elif roll < 0.19:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
 				else:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
 
 			# --- BIOME 2: Rocky Soil (Depth 151 to 350) ---
 			elif y <= 350:
-				if roll < 0.25:
+				if roll < 0.06:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_MINE)
+				elif roll < 0.31:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
-				elif roll < 0.30:
+				elif roll < 0.36:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
-				elif roll < 0.37:
+				elif roll < 0.43:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
 				else:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
 
 			# --- BIOME 3: Ancient Mines (Depth 351 to 498) ---
 			else:
-				if roll < 0.15:
+				if roll < 0.10:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_MINE)
+				elif roll < 0.25:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_UNDIGGABLE)
-				elif roll < 0.45:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
-				elif roll < 0.50:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
 				elif roll < 0.55:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
+				elif roll < 0.60:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
+				elif roll < 0.65:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
 				else:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)

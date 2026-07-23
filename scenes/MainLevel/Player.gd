@@ -9,6 +9,7 @@ signal collected_battery(pos: Vector2)
 signal detonated_bomb(pos: Vector2)
 signal placed_bomb(pos: Vector2)
 signal hit_rock(pos: Vector2)
+signal hit_mine(pos: Vector2)
 signal combo_changed(combo: int)
 signal frenzy_level_changed(level: int)
 signal low_battery_warning(is_low: bool)
@@ -29,6 +30,8 @@ const TILE_WALL: Vector2i = Vector2i(3, 0)
 const TILE_ROCK: Vector2i = Vector2i(10, 17)
 const TILE_CRACKED_ROCK: Vector2i = Vector2i(11, 17)
 const TILE_DIRT: Vector2i = Vector2i(32, 15)
+const TILE_MINE: Vector2i = Vector2i(33, 15)
+const MINE_BATTERY_DAMAGE: float = 4.0
 const MAX_BOMBS: int = 3
 const BOMB_BATTERY_COST: float = 3.0
 const ROCK_DRILL_DELAY: float = 0.4
@@ -181,6 +184,23 @@ func _try_move(dir: Vector2i) -> void:
 			_is_moving = true
 			_is_digging = true
 			_increment_combo()
+			_play_impact_lunge(dir)
+			return
+		elif atlas == TILE_MINE:
+			_dirt_layer.erase_cell(target_cell)
+			if is_frenzy:
+				_current_move_speed = _get_frenzy_speed()
+				_is_digging = true
+				_increment_combo()
+				dug_tile.emit(target_pos)
+			else:
+				_spend_battery(MINE_BATTERY_DAMAGE)
+				_reset_combo()
+				hit_mine.emit(target_pos)
+				_current_move_speed = MOVE_SPEED_DIRT
+				_is_digging = true
+			_target_position = target_pos
+			_is_moving = true
 			_play_impact_lunge(dir)
 			return
 		elif atlas == TILE_UNDIGGABLE or atlas == TILE_WALL:
