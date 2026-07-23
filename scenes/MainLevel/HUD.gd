@@ -199,6 +199,183 @@ func _on_battery_depleted(_pos: Vector2) -> void:
 	flash_tween.tween_property(banner, "modulate", Color(1, 1, 0), 0.15)
 	flash_tween.tween_property(banner, "modulate", Color(1, 0.2, 0.2), 0.15)
 
+	# Trigger Game Over Leaderboard overlay after breakdown animation completes
+	await get_tree().create_timer(1.2).timeout
+	if is_instance_valid(banner):
+		banner.queue_free()
+	_show_game_over_overlay()
+
+
+var _game_over_panel: Control = null
+var _scores_vbox: VBoxContainer = null
+
+
+func _show_game_over_overlay() -> void:
+	if _game_over_panel:
+		return
+
+	var player := get_tree().get_first_node_in_group("player")
+	var final_depth: int = player.current_depth if (player and "current_depth" in player) else 0
+	var final_wealth: int = player.wealth if (player and "wealth" in player) else 0
+	var final_score: int = player.get_total_score() if (player and player.has_method("get_total_score")) else (final_depth * 10 + final_wealth)
+
+	_game_over_panel = PanelContainer.new()
+	_game_over_panel.anchors_preset = Control.PRESET_CENTER
+	_game_over_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_game_over_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_game_over_panel.custom_minimum_size = Vector2(340, 240)
+	_game_over_panel.position = Vector2(
+		(get_viewport_rect().size.x - 340) * 0.5,
+		(get_viewport_rect().size.y - 240) * 0.5
+	)
+
+	# Style panel box
+	var style_box := StyleBoxFlat.new()
+	style_box.bg_color = Color(0.08, 0.08, 0.12, 0.95)
+	style_box.border_width_left = 2
+	style_box.border_width_top = 2
+	style_box.border_width_right = 2
+	style_box.border_width_bottom = 2
+	style_box.border_color = Color(1.0, 0.82, 0.05) # Gold border
+	style_box.corner_radius_top_left = 8
+	style_box.corner_radius_top_right = 8
+	style_box.corner_radius_bottom_left = 8
+	style_box.corner_radius_bottom_right = 8
+	style_box.content_margin_left = 16
+	style_box.content_margin_top = 12
+	style_box.content_margin_right = 16
+	style_box.content_margin_bottom = 12
+	_game_over_panel.add_theme_stylebox_override("panel", style_box)
+
+	var main_vbox := VBoxContainer.new()
+	main_vbox.add_theme_constant_override("separation", 8)
+	_game_over_panel.add_child(main_vbox)
+
+	# Title
+	var title_lbl := Label.new()
+	title_lbl.text = "🏆 SHATTER-DRILL RUN END 🏆"
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.82, 0.05))
+	title_lbl.add_theme_font_size_override("font_size", 14)
+	main_vbox.add_child(title_lbl)
+
+	# Run Stats
+	var stats_lbl := Label.new()
+	stats_lbl.text = "Depth: " + str(final_depth) + "m  |  Wealth: $" + str(final_wealth) + "  |  SCORE: " + str(final_score)
+	stats_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stats_lbl.add_theme_color_override("font_color", Color(0.0, 1.0, 0.8)) # Cyan
+	stats_lbl.add_theme_font_size_override("font_size", 11)
+	main_vbox.add_child(stats_lbl)
+
+	# Name Input & Submit HBox
+	var input_hbox := HBoxContainer.new()
+	input_hbox.add_theme_constant_override("separation", 6)
+	main_vbox.add_child(input_hbox)
+
+	var name_input := LineEdit.new()
+	name_input.placeholder_text = "Enter Miner Name..."
+	name_input.text = "Anonymous Miner"
+	name_input.custom_minimum_size = Vector2(180, 24)
+	name_input.add_theme_font_size_override("font_size", 11)
+	input_hbox.add_child(name_input)
+
+	var submit_btn := Button.new()
+	submit_btn.text = "Submit Score"
+	submit_btn.custom_minimum_size = Vector2(100, 24)
+	submit_btn.add_theme_font_size_override("font_size", 11)
+	input_hbox.add_child(submit_btn)
+
+	# Leaderboard Board Title
+	var board_title := Label.new()
+	board_title.text = "--- TOP 10 SKG LOCAL LEADERBOARD ---"
+	board_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	board_title.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	board_title.add_theme_font_size_override("font_size", 10)
+	main_vbox.add_child(board_title)
+
+	# High Scores Scroll / Container
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(300, 90)
+	main_vbox.add_child(scroll)
+
+	_scores_vbox = VBoxContainer.new()
+	_scores_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_scores_vbox)
+
+	_refresh_leaderboard_display()
+
+	# Connect submit button
+	submit_btn.pressed.connect(func():
+		var player_name: String = name_input.text
+		if Leaderboard:
+			Leaderboard.register_high_score(player_name, final_score, final_depth)
+		submit_btn.disabled = true
+		submit_btn.text = "SAVED! ✔"
+		name_input.editable = false
+		_refresh_leaderboard_display()
+	)
+
+	# Restart / Play Again Button
+	var restart_btn := Button.new()
+	restart_btn.text = "🔄 PLAY AGAIN"
+	restart_btn.custom_minimum_size = Vector2(140, 26)
+	restart_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	restart_btn.add_theme_font_size_override("font_size", 12)
+	restart_btn.pressed.connect(func():
+		get_tree().reload_current_scene()
+	)
+	main_vbox.add_child(restart_btn)
+
+	add_child(_game_over_panel)
+
+	# Animate panel pop-in
+	_game_over_panel.scale = Vector2(0.2, 0.2)
+	_game_over_panel.pivot_offset = _game_over_panel.custom_minimum_size * 0.5
+	var tween := create_tween()
+	tween.tween_property(_game_over_panel, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func _refresh_leaderboard_display() -> void:
+	if not _scores_vbox:
+		return
+
+	# Clear previous entries
+	for child in _scores_vbox.get_children():
+		child.queue_free()
+
+	var top_scores: Array = []
+	if Leaderboard:
+		top_scores = Leaderboard.get_top_scores()
+
+	if top_scores.is_empty():
+		var empty_lbl := Label.new()
+		empty_lbl.text = "No high scores recorded yet. Be the first!"
+		empty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+		empty_lbl.add_theme_font_size_override("font_size", 10)
+		_scores_vbox.add_child(empty_lbl)
+		return
+
+	for i in top_scores.size():
+		var entry: Dictionary = top_scores[i]
+		var entry_lbl := Label.new()
+		var rank_str: String = "#" + str(i + 1) + " "
+		var score_text: String = rank_str + str(entry.get("name", "Miner")) + " - " + str(entry.get("score", 0)) + " pts (" + str(entry.get("depth", 0)) + "m)"
+		entry_lbl.text = score_text
+		entry_lbl.add_theme_font_size_override("font_size", 10)
+
+		# Gold for #1, Silver for #2, Bronze for #3
+		if i == 0:
+			entry_lbl.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
+		elif i == 1:
+			entry_lbl.add_theme_color_override("font_color", Color(0.75, 0.75, 0.75))
+		elif i == 2:
+			entry_lbl.add_theme_color_override("font_color", Color(0.8, 0.5, 0.2))
+		else:
+			entry_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+
+		_scores_vbox.add_child(entry_lbl)
+
 
 func _on_bombs_changed(current: int, _maximum: int) -> void:
 	for i in _bomb_rects.size():

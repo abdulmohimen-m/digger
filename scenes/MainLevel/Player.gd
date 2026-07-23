@@ -53,11 +53,17 @@ var _is_depleted: bool = false
 var _low_bat_label: Label = null
 var frenzy_level: int = 0
 var current_depth: int = -1
+var wealth: int = 0
 var is_frenzy: bool:
 	get: return frenzy_level >= 1
 
 @onready var _dirt_layer: TileMapLayer = $"../Tilemaps/DirtLayer"
 @onready var _sprite: Sprite2D = $Sprite2D
+
+
+func get_total_score() -> int:
+	var depth_score: int = max(0, current_depth) * 10
+	return depth_score + wealth
 
 
 func get_biome_name(depth: int) -> String:
@@ -157,6 +163,7 @@ func _try_move(dir: Vector2i) -> void:
 		if atlas == TILE_BATTERY:
 			_dirt_layer.erase_cell(target_cell)
 			_recharge_battery(BATTERY_RECHARGE_AMOUNT)
+			wealth += 50
 			_target_position = target_pos
 			_current_move_speed = MOVE_SPEED_DIRT
 			_is_moving = true
@@ -168,6 +175,7 @@ func _try_move(dir: Vector2i) -> void:
 		elif atlas == TILE_BOMB:
 			_dirt_layer.erase_cell(target_cell)
 			_collect_bomb()
+			wealth += 100
 			_target_position = target_pos
 			_current_move_speed = MOVE_SPEED_DIRT
 			_is_moving = true
