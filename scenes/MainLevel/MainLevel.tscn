@@ -1,10 +1,10 @@
 [gd_scene format=4 uid="uid://m5ic6g7lgjvl"]
 
-[ext_resource type="TileSet" uid="uid://cgqu2nl2bg663" path="res://assets/tilesets/1bit_tileset.tres" id="1_li581"]
+[ext_resource type="TileSet" uid="uid://b2yrd3rtjut1a" path="res://assets/tilesets/game_specific.tres" id="1_li581"]
 [ext_resource type="Script" uid="uid://ccraihr2ih4hk" path="res://scenes/MainLevel/DiggableLayer.gd" id="2_diggable"]
 [ext_resource type="Script" uid="uid://i7ye0mrqrf54" path="res://scenes/MainLevel/Player.gd" id="3_player"]
 [ext_resource type="Script" uid="uid://byo7vp7jbya41" path="res://scenes/MainLevel/HUD.gd" id="4_hud"]
-[ext_resource type="Texture2D" uid="uid://ds8gv8wol7gko" path="res://assets/kenney/kenney_1-bit-pack/Tilesheet/colored.png" id="5_texture"]
+[ext_resource type="Texture2D" uid="uid://dl6cc8ikmu7nj" path="res://assets/GameSpecificTiles.png" id="5_texture"]
 [ext_resource type="Script" uid="uid://dkqvepy6w3v2p" path="res://scenes/MainLevel/FeedbackManager.gd" id="6_feedback"]
 [ext_resource type="Script" uid="uid://kf0x1bcsx5an" path="res://scenes/MainLevel/PlayerCamera.gd" id="7_camera"]
 
@@ -31,7 +31,7 @@ script = ExtResource("3_player")
 [node name="Sprite2D" type="Sprite2D" parent="Player" unique_id=341892750]
 texture = ExtResource("5_texture")
 region_enabled = true
-region_rect = Rect2(476, 136, 16, 16)
+region_rect = Rect2(0, 68, 16, 16)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Player" unique_id=674523981]
 shape = SubResource("RectangleShape2D_player")

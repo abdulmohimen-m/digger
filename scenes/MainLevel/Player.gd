@@ -26,17 +26,20 @@ const MOVE_SPEED_FREE: float = 160.0 # ~0.1s per tile
 const MOVE_SPEED_DIRT: float = 53.0  # ~0.3s per tile
 const MOVE_SPEED_FRENZY_L1: float = 85.0 # Slight speed boost for L1
 const MOVE_SPEED_FRENZY: float = 120.0 # High speed super drill for L2-L4
-const TILE_BATTERY: Vector2i = Vector2i(47, 9)
+const TILE_WALL: Vector2i = Vector2i(0, 0)
+const TILE_CRACKED_ROCK: Vector2i = Vector2i(1, 0)
+const TILE_ROCK: Vector2i = Vector2i(2, 0)
+const TILE_MINE: Vector2i = Vector2i(3, 0)
+const TILE_UNDIGGABLE: Vector2i = Vector2i(4, 0)
+const TILE_DIRT: Vector2i = Vector2i(5, 0)
+const TILE_BOMB: Vector2i = Vector2i(6, 0)
+const TILE_BATTERY: Vector2i = Vector2i(7, 0)
+
+const TILE_PLAIN: Vector2i = Vector2i(1, 1)
+const TILE_DIAMOND: Vector2i = Vector2i(3, 1)
+const TILE_GOLD: Vector2i = Vector2i(4, 1)
+const SOURCE_ID: int = 0
 const BATTERY_RECHARGE_AMOUNT: float = 3.0
-const TILE_BOMB: Vector2i = Vector2i(45, 9)
-const TILE_UNDIGGABLE: Vector2i = Vector2i(39, 15)
-const TILE_WALL: Vector2i = Vector2i(3, 0)
-const TILE_ROCK: Vector2i = Vector2i(10, 17)
-const TILE_CRACKED_ROCK: Vector2i = Vector2i(11, 17)
-const TILE_DIRT: Vector2i = Vector2i(32, 15)
-const TILE_MINE: Vector2i = Vector2i(33, 15)
-const TILE_GOLD: Vector2i = Vector2i(0, 1)
-const TILE_DIAMOND: Vector2i = Vector2i(1, 1)
 const MINE_BATTERY_DAMAGE: float = 4.0
 const MAX_BOMBS: int = 3
 const BOMB_BATTERY_COST: float = 3.0
@@ -171,18 +174,22 @@ func _physics_process(delta: float) -> void:
 			EventBus.vehicle_movement_updated.emit(_is_moving, _current_move_speed)
 
 
+func _clear_tile(cell: Vector2i) -> void:
+	_dirt_layer.set_cell(cell, SOURCE_ID, TILE_PLAIN)
+
+
 func _try_move(dir: Vector2i) -> void:
 	var current_pos := _target_position
 	var target_pos := current_pos + Vector2(dir.x * TILE_SIZE, dir.y * TILE_SIZE)
 	var target_cell: Vector2i = _dirt_layer.local_to_map(_dirt_layer.to_local(target_pos))
 	var source_id: int = _dirt_layer.get_cell_source_id(target_cell)
-	var has_tile: bool = source_id != -1
+	var atlas: Vector2i = _dirt_layer.get_cell_atlas_coords(target_cell) if source_id != -1 else Vector2i(-1, -1)
+	var has_tile: bool = source_id != -1 and atlas != TILE_PLAIN
 
 	# Intercept collectibles
 	if has_tile:
-		var atlas: Vector2i = _dirt_layer.get_cell_atlas_coords(target_cell)
 		if atlas == TILE_BATTERY:
-			_dirt_layer.erase_cell(target_cell)
+			_clear_tile(target_cell)
 			_recharge_battery(BATTERY_RECHARGE_AMOUNT)
 			wealth += 50
 			_target_position = target_pos
@@ -194,7 +201,7 @@ func _try_move(dir: Vector2i) -> void:
 			_play_impact_lunge(dir)
 			return
 		elif atlas == TILE_BOMB:
-			_dirt_layer.erase_cell(target_cell)
+			_clear_tile(target_cell)
 			_collect_bomb()
 			wealth += 100
 			_target_position = target_pos
@@ -206,7 +213,7 @@ func _try_move(dir: Vector2i) -> void:
 			_play_impact_lunge(dir)
 			return
 		elif atlas == TILE_GOLD:
-			_dirt_layer.erase_cell(target_cell)
+			_clear_tile(target_cell)
 			_collect_gold()
 			_target_position = target_pos
 			_current_move_speed = MOVE_SPEED_DIRT
@@ -217,7 +224,7 @@ func _try_move(dir: Vector2i) -> void:
 			_play_impact_lunge(dir)
 			return
 		elif atlas == TILE_DIAMOND:
-			_dirt_layer.erase_cell(target_cell)
+			_clear_tile(target_cell)
 			_collect_diamond()
 			_target_position = target_pos
 			_current_move_speed = MOVE_SPEED_DIRT
@@ -228,7 +235,7 @@ func _try_move(dir: Vector2i) -> void:
 			_play_impact_lunge(dir)
 			return
 		elif atlas == TILE_MINE:
-			_dirt_layer.erase_cell(target_cell)
+			_clear_tile(target_cell)
 			if is_frenzy:
 				_current_move_speed = _get_frenzy_speed()
 				_is_digging = true
@@ -256,7 +263,7 @@ func _try_move(dir: Vector2i) -> void:
 			
 			if in_bounds:
 				if frenzy_level >= 5:
-					_dirt_layer.erase_cell(target_cell)
+					_clear_tile(target_cell)
 					_spend_battery(1.0)
 					_target_position = target_pos
 					_current_move_speed = _get_frenzy_speed()
@@ -269,7 +276,7 @@ func _try_move(dir: Vector2i) -> void:
 				else:
 					_is_busy = true
 					var next_tile: Vector2i = TILE_CRACKED_ROCK if atlas == TILE_ROCK else TILE_DIRT
-					_dirt_layer.set_cell(target_cell, 1, next_tile)
+					_dirt_layer.set_cell(target_cell, SOURCE_ID, next_tile)
 					var cost: float = 1.0 if dir == Vector2i(0, 1) else 0.5
 					_spend_battery(cost)
 					_increment_combo()
@@ -285,7 +292,7 @@ func _try_move(dir: Vector2i) -> void:
 	match dir:
 		Vector2i(0, 1):   # ---- Down: dig if tile present (1.0 battery), always step in ----
 			if has_tile:
-				_dirt_layer.erase_cell(target_cell)
+				_clear_tile(target_cell)
 				_spend_battery(1.0)
 				_current_move_speed = _get_frenzy_speed()
 				_is_digging = true
@@ -304,7 +311,7 @@ func _try_move(dir: Vector2i) -> void:
 		Vector2i(0, -1):  # ---- Up: dig if tile present (0.5 battery), step in ----
 			if target_pos.y >= TILE_SIZE * 0.5:
 				if has_tile:
-					_dirt_layer.erase_cell(target_cell)
+					_clear_tile(target_cell)
 					_spend_battery(0.5)
 					_current_move_speed = _get_frenzy_speed()
 					_is_digging = true
@@ -326,7 +333,7 @@ func _try_move(dir: Vector2i) -> void:
 			var in_bounds: bool = target_pos.x >= MAP_MIN_X and target_pos.x <= MAP_MAX_X
 			if in_bounds:
 				if has_tile:
-					_dirt_layer.erase_cell(target_cell)
+					_clear_tile(target_cell)
 					_spend_battery(0.5)
 					_current_move_speed = _get_frenzy_speed()
 					_is_digging = true
@@ -487,9 +494,9 @@ func _on_tile_dug_effects(cell: Vector2i, dir: Vector2i) -> void:
 		var perp1 := cell + Vector2i(-dir.y, dir.x)
 		var perp2 := cell + Vector2i(dir.y, -dir.x)
 		if _dirt_layer.get_cell_atlas_coords(perp1) == TILE_DIRT:
-			_dirt_layer.erase_cell(perp1)
+			_clear_tile(perp1)
 		if _dirt_layer.get_cell_atlas_coords(perp2) == TILE_DIRT:
-			_dirt_layer.erase_cell(perp2)
+			_clear_tile(perp2)
 
 
 func _collect_bomb() -> void:
@@ -523,8 +530,8 @@ func _detonate_bomb() -> void:
 	var bomb_sprite := Sprite2D.new()
 	bomb_sprite.texture = _sprite.texture
 	bomb_sprite.region_enabled = true
-	# Atlas coordinate (45, 9) with 1px spacing: x = 45 * 17 = 765, y = 9 * 17 = 153
-	bomb_sprite.region_rect = Rect2(765, 153, 16, 16)
+	# Atlas coordinate (6, 0) with 1px spacing: x = 6 * 17 = 102, y = 0 * 17 = 0
+	bomb_sprite.region_rect = Rect2(102, 0, 16, 16)
 	bomb_sprite.global_position = bomb_pos
 	bomb_sprite.z_index = 5
 	get_parent().add_child(bomb_sprite)
@@ -555,15 +562,15 @@ func _detonate_bomb() -> void:
 			if _dirt_layer.get_cell_source_id(target_cell) != -1:
 				var atlas: Vector2i = _dirt_layer.get_cell_atlas_coords(target_cell)
 				if atlas == TILE_GOLD:
-					_dirt_layer.erase_cell(target_cell)
+					_clear_tile(target_cell)
 					_collect_gold()
 					collected_gold.emit(_dirt_layer.to_global(_dirt_layer.map_to_local(target_cell)))
 				elif atlas == TILE_DIAMOND:
-					_dirt_layer.erase_cell(target_cell)
+					_clear_tile(target_cell)
 					_collect_diamond()
 					collected_diamond.emit(_dirt_layer.to_global(_dirt_layer.map_to_local(target_cell)))
-				elif atlas != Vector2i(3, 0):
-					_dirt_layer.erase_cell(target_cell)
+				elif atlas != TILE_WALL:
+					_clear_tile(target_cell)
 					
 	# Check if player is caught in the blast (Chebyshev distance in grid cells)
 	var player_cell := _dirt_layer.local_to_map(_dirt_layer.to_local(global_position))

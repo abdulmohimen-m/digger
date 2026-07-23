@@ -40,7 +40,7 @@ This document logs all the features, logic, and polish implemented during this d
   - **Free Space:** Costs **0.0 battery**, runs at quick free movement speed.
 
 ### 2. Battery & Recharge System
-- **Recharge Tiles:** Battery recharge canister tiles (sprite coordinates `(47, 9)`) spawned in the dirt layout.
+- **Recharge Tiles:** Battery recharge cell tiles (sprite coordinates `(7, 0)`) spawned in the dirt layout.
 - **Recharging:** Landing on a recharge tile automatically erases it and restores **3.0 shards** of battery (capped at 10.0). No battery is consumed for the step.
 - **⚠️ Enhanced Low-Battery Warning System ($\le 3.0$ Shards / $30\%$ Capacity):**
   - **Screen Edge Red Vignette:** A soft pulsing red edge overlay pulses across the screen while in low battery state.
@@ -55,14 +55,14 @@ This document logs all the features, logic, and polish implemented during this d
   - **Arcade Banner:** Displays a bold `⚠️ BATTERY EXHAUSTED! ⚠️` HUD banner with scale-punch animation and red/yellow warning flashes.
 
 ### 4. Bomb & Pickup System
-- **Bomb Pickups:** Bomb canister tiles (sprite coordinates `(45, 9)`) spawned in the grid layout. Collecting one restores **1 bomb** (capped at 3).
+- **Bomb Pickups:** Bomb canister tiles (sprite coordinates `(6, 0)`) spawned in the grid layout. Collecting one restores **1 bomb** (capped at 3).
 - **On-The-Move Placement:** Pressing `ui_accept` (Space) consumes **3.0 battery** and **1 bomb** to plant an explosive on the current grid tile center (`snapped(16, 16) + (8, 8)`) **without stopping vehicle movement**.
 - **Fuse Timer:** The bomb ticks down on a **2.0-second fuse** while flashing red/white with a bouncy drop pop.
 - **3x3 Blast Radius:** Obliterates all breakable tiles and items in a 3x3 area around the bomb's origin. Indestructible side walls are immune.
 - **Blast Penalty:** Standing inside the 3x3 blast area when it detonates deals a **5.0 battery damage penalty** to the player.
 
 ### 5. Undiggable Tiles & Wall Boundaries System
-- **Hard Obstacles:** Undiggable metal tiles (sprite coordinates `(39, 15)`), perimeter walls, and map boundaries block player movement.
+- **Hard Obstacles:** Undiggable metal tiles (sprite coordinates `(4, 0)`), perimeter walls `(0, 0)`, and map boundaries block player movement.
 - **Multi-Biome Progression:** Introduced from the first level with progressive density scaling:
   - **Biome 1 (Normal Soil):** 3% Low Density (introduces navigational hazard early).
   - **Biome 2 (Rocky Soil):** 8% Medium Density.
@@ -74,28 +74,28 @@ This document logs all the features, logic, and polish implemented during this d
 - **Bomb Destructible:** Undiggable metal blocks **can** be destroyed using bombs (unlike perimeter map edge walls).
 
 ### 6. Rocky Tiles System
-- **3-Hit Durability Progression:** Rocky tiles (sprite coordinates `(10, 17)`) require **3 hits** total to break through.
+- **3-Hit Durability Progression:** Rocky tiles (sprite coordinates `(2, 0)`) require **3 hits** total to break through.
 - **Instant Hit + 0.3s Cooldown:**
   - Tile damage, battery deduction, 4.0px screen shake, dark grey stone particles, and SFX trigger **instantly on touch**.
   - A dedicated `_is_busy` state lock enforces a clean **0.3-second input cooldown** between hits.
   - Holding down a directional key against rock takes **~0.9 seconds total** across all 3 hits with smooth input pacing and zero input buffering bugs.
 - **Hit Progression:**
-  - **1st Hit (`10, 17`):** Instant rock hit feedback $\rightarrow$ transforms tile into Cracked Rock (`11, 17`) $\rightarrow$ 0.3s cooldown.
-  - **2nd Hit (`11, 17`):** Instant rock hit feedback $\rightarrow$ transforms tile into Standard Dirt (`32, 15`) $\rightarrow$ 0.3s cooldown.
-  - **3rd Hit (`32, 15`):** Digs standard dirt normally, spending battery and stepping forward into the cell.
+  - **1st Hit (`2, 0`):** Instant rock hit feedback $\rightarrow$ transforms tile into Cracked Rock (`1, 0`) $\rightarrow$ 0.3s cooldown.
+  - **2nd Hit (`1, 0`):** Instant rock hit feedback $\rightarrow$ transforms tile into Standard Dirt (`5, 0`) $\rightarrow$ 0.3s cooldown.
+  - **3rd Hit (`5, 0`):** Digs standard dirt normally, spending battery and stepping forward into the cell.
 - **Bomb Destruction:** Bombs obliterate rocky tiles in **1 hit** regardless of damage stage.
 
 ### 7. Bomb Inventory HUD UI
 - **Visuals:** Shows 3 square red indicators directly below the battery container.
 
 ### 8. Mine Hazards System
-- **Subtle Tile Signpost:** Mine tiles (atlas coordinate `(33, 15)`) spawn with subtle dirt-like signposting across all biomes (4% Biome 1, 6% Biome 2, 10% Biome 3).
+- **Subtle Tile Signpost:** Mine tiles (atlas coordinate `(3, 0)`) spawn with subtle dirt-like signposting across all biomes (4% Biome 1, 6% Biome 2, 10% Biome 3).
 - **Instant Explosion & Battery Damage:** Digging or stepping on a mine triggers an instant explosion, deducting a **4.0 battery penalty**, resetting the combo, erasing the tile, and emitting a heavy 12.0px camera shake and fiery red/orange particle explosion (`hit_mine` signal).
 - **Bomb Clearing:** Player bombs safely obliterate mine tiles in their 3x3 blast radius without triggering penalties.
 - **Frenzy Immunity:** Reaching Frenzy Mode (combo streak $\ge 10$) allows the drilling vehicle to blast safely through mines with 0 battery cost.
 
 ### 9. Gold & Diamond Collectibles System
-- **Progressive Biome Rarity:** Gold Veins (`0, 1`) and Diamond Ores (`1, 1`) spawn procedurally across biomes (Biome 1: 8% Gold / 1% Diamond, Biome 2: 10% Gold / 4% Diamond, Biome 3: 12% Gold / 8% Diamond).
+- **Progressive Biome Rarity:** Gold Veins (`4, 1`) and Diamond Ores (`3, 1`) spawn procedurally across biomes (Biome 1: 8% Gold / 1% Diamond, Biome 2: 10% Gold / 4% Diamond, Biome 3: 12% Gold / 8% Diamond).
 - **Dedicated HUD Counters:** Displays real-time item collection counts on dedicated HUD labels: `🟡 GOLD: N` (gold) and `💎 DIAMOND: N` (cyan) with scale-punch spring bounce animations.
 - **Score Calculation Integration:** Final run score formula: `(Max Depth * 10) + (Gold * 100) + (Diamonds * 300)`.
 - **Bomb Auto-Collection:** Detonating a bomb in a 3x3 area automatically collects any Gold and Diamond tiles caught in the blast area without destroying their value.
