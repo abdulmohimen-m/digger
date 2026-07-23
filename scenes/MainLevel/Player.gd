@@ -2,10 +2,14 @@ extends CharacterBody2D
 
 signal battery_changed(current: float, maximum: float)
 signal bombs_changed(current: int, maximum: int)
+signal gold_changed(current: int)
+signal diamond_changed(current: int)
 signal dug_tile(pos: Vector2)
 signal moved_freely(pos: Vector2)
 signal hit_wall(pos: Vector2)
 signal collected_battery(pos: Vector2)
+signal collected_gold(pos: Vector2)
+signal collected_diamond(pos: Vector2)
 signal detonated_bomb(pos: Vector2)
 signal placed_bomb(pos: Vector2)
 signal hit_rock(pos: Vector2)
@@ -31,6 +35,8 @@ const TILE_ROCK: Vector2i = Vector2i(10, 17)
 const TILE_CRACKED_ROCK: Vector2i = Vector2i(11, 17)
 const TILE_DIRT: Vector2i = Vector2i(32, 15)
 const TILE_MINE: Vector2i = Vector2i(33, 15)
+const TILE_GOLD: Vector2i = Vector2i(0, 1)
+const TILE_DIAMOND: Vector2i = Vector2i(1, 1)
 const MINE_BATTERY_DAMAGE: float = 4.0
 const MAX_BOMBS: int = 3
 const BOMB_BATTERY_COST: float = 3.0
@@ -57,6 +63,8 @@ var _low_bat_label: Label = null
 var frenzy_level: int = 0
 var current_depth: int = -1
 var wealth: int = 0
+var gold_count: int = 0
+var diamond_count: int = 0
 var is_frenzy: bool:
 	get: return frenzy_level >= 1
 
@@ -66,7 +74,7 @@ var is_frenzy: bool:
 
 func get_total_score() -> int:
 	var depth_score: int = max(0, current_depth) * 10
-	return depth_score + wealth
+	return depth_score + (gold_count * 100) + (diamond_count * 300)
 
 
 func get_biome_name(depth: int) -> String:
@@ -94,6 +102,8 @@ func _ready() -> void:
 	_target_position = global_position
 	battery_changed.emit(battery, MAX_BATTERY)
 	bombs_changed.emit(bombs, MAX_BOMBS)
+	gold_changed.emit(gold_count)
+	diamond_changed.emit(diamond_count)
 	_update_depth_tracker()
 	
 	# Setup floating LOW BAT warning icon above vehicle
@@ -184,6 +194,28 @@ func _try_move(dir: Vector2i) -> void:
 			_is_moving = true
 			_is_digging = true
 			_increment_combo()
+			_play_impact_lunge(dir)
+			return
+		elif atlas == TILE_GOLD:
+			_dirt_layer.erase_cell(target_cell)
+			_collect_gold()
+			_target_position = target_pos
+			_current_move_speed = MOVE_SPEED_DIRT
+			_is_moving = true
+			_is_digging = true
+			_increment_combo()
+			collected_gold.emit(target_pos)
+			_play_impact_lunge(dir)
+			return
+		elif atlas == TILE_DIAMOND:
+			_dirt_layer.erase_cell(target_cell)
+			_collect_diamond()
+			_target_position = target_pos
+			_current_move_speed = MOVE_SPEED_DIRT
+			_is_moving = true
+			_is_digging = true
+			_increment_combo()
+			collected_diamond.emit(target_pos)
 			_play_impact_lunge(dir)
 			return
 		elif atlas == TILE_MINE:
@@ -457,6 +489,16 @@ func _collect_bomb() -> void:
 		bombs_changed.emit(bombs, MAX_BOMBS)
 
 
+func _collect_gold() -> void:
+	gold_count += 1
+	gold_changed.emit(gold_count)
+
+
+func _collect_diamond() -> void:
+	diamond_count += 1
+	diamond_changed.emit(diamond_count)
+
+
 func _detonate_bomb() -> void:
 	if bombs <= 0 or battery < BOMB_BATTERY_COST:
 		return
@@ -497,13 +539,21 @@ func _detonate_bomb() -> void:
 	if is_instance_valid(bomb_sprite):
 		bomb_sprite.queue_free()
 	
-	# Clear 3x3 area
+	# Clear 3x3 area & auto-collect items
 	for dx in range(-1, 2):
 		for dy in range(-1, 2):
 			var target_cell: Vector2i = current_cell + Vector2i(dx, dy)
 			if _dirt_layer.get_cell_source_id(target_cell) != -1:
 				var atlas: Vector2i = _dirt_layer.get_cell_atlas_coords(target_cell)
-				if atlas != Vector2i(3, 0):
+				if atlas == TILE_GOLD:
+					_dirt_layer.erase_cell(target_cell)
+					_collect_gold()
+					collected_gold.emit(_dirt_layer.to_global(_dirt_layer.map_to_local(target_cell)))
+				elif atlas == TILE_DIAMOND:
+					_dirt_layer.erase_cell(target_cell)
+					_collect_diamond()
+					collected_diamond.emit(_dirt_layer.to_global(_dirt_layer.map_to_local(target_cell)))
+				elif atlas != Vector2i(3, 0):
 					_dirt_layer.erase_cell(target_cell)
 					
 	# Check if player is caught in the blast (Chebyshev distance in grid cells)

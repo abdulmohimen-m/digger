@@ -12,6 +12,8 @@ const TILE_CRACKED_ROCK = Vector2i(11, 17)
 const TILE_DIRT = Vector2i(32, 15)
 const TILE_MINE = Vector2i(33, 15)
 const TILE_WALL = Vector2i(3, 0)
+const TILE_GOLD = Vector2i(0, 1)
+const TILE_DIAMOND = Vector2i(1, 1)
 
 const SOURCE_ID: int = 1
 
@@ -72,6 +74,10 @@ func generate_map() -> void:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
 				elif roll < 0.19:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
+				elif roll < 0.27:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_GOLD)
+				elif roll < 0.28:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIAMOND)
 				else:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
 
@@ -85,6 +91,10 @@ func generate_map() -> void:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
 				elif roll < 0.43:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
+				elif roll < 0.53:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_GOLD)
+				elif roll < 0.57:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIAMOND)
 				else:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
 
@@ -94,12 +104,16 @@ func generate_map() -> void:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_MINE)
 				elif roll < 0.25:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_UNDIGGABLE)
-				elif roll < 0.55:
+				elif roll < 0.50:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
-				elif roll < 0.60:
+				elif roll < 0.55:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
-				elif roll < 0.65:
+				elif roll < 0.60:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
+				elif roll < 0.72:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_GOLD)
+				elif roll < 0.80:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIAMOND)
 				else:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
 

@@ -84,6 +84,13 @@ This document logs all the features, logic, and polish implemented during this d
 - **Instant Explosion & Battery Damage:** Digging or stepping on a mine triggers an instant explosion, deducting a **4.0 battery penalty**, resetting the combo, erasing the tile, and emitting a heavy 12.0px camera shake and fiery red/orange particle explosion (`hit_mine` signal).
 - **Bomb Clearing:** Player bombs safely obliterate mine tiles in their 3x3 blast radius without triggering penalties.
 - **Frenzy Immunity:** Reaching Frenzy Mode (combo streak $\ge 10$) allows the drilling vehicle to blast safely through mines with 0 battery cost.
+
+### 9. Gold & Diamond Collectibles System
+- **Progressive Biome Rarity:** Gold Veins (`0, 1`) and Diamond Ores (`1, 1`) spawn procedurally across biomes (Biome 1: 8% Gold / 1% Diamond, Biome 2: 10% Gold / 4% Diamond, Biome 3: 12% Gold / 8% Diamond).
+- **Dedicated HUD Counters:** Displays real-time item collection counts on dedicated HUD labels: `🟡 GOLD: N` (gold) and `💎 DIAMOND: N` (cyan) with scale-punch spring bounce animations.
+- **Score Calculation Integration:** Final run score formula: `(Max Depth * 10) + (Gold * 100) + (Diamonds * 300)`.
+- **Bomb Auto-Collection:** Detonating a bomb in a 3x3 area automatically collects any Gold and Diamond tiles caught in the blast area without destroying their value.
+- **Juice & Floating Popups:** Digging a Gold or Diamond tile triggers glowing floating text popups (`+100` gold / `+300` cyan), particle explosions matching item colors, and chime SFX.
 - **Dynamic State:** Squares transition from Bright Red (available) to Dark Grey (empty) as bombs are used or picked up.
 
 ---

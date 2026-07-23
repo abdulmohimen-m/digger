@@ -23,6 +23,8 @@ func _ready() -> void:
 		player.moved_freely.connect(_on_player_moved_freely)
 		player.hit_wall.connect(_on_player_hit_wall)
 		player.collected_battery.connect(_on_player_collected_battery)
+		player.collected_gold.connect(_on_player_collected_gold)
+		player.collected_diamond.connect(_on_player_collected_diamond)
 		player.placed_bomb.connect(_on_player_placed_bomb)
 		player.detonated_bomb.connect(_on_player_detonated_bomb)
 		player.hit_rock.connect(_on_player_hit_rock)
@@ -51,6 +53,29 @@ func _on_player_hit_wall(pos: Vector2) -> void:
 func _on_player_collected_battery(pos: Vector2) -> void:
 	_spawn_vfx(battery_vfx, pos, Color("ffd700")) # Gold placeholder
 	_play_sfx(battery_sfx, "Battery Collected")
+
+func _on_player_collected_gold(pos: Vector2) -> void:
+	_spawn_vfx(null, pos, Color(1.0, 0.84, 0.0))
+	_spawn_floating_text(pos, "+100", Color(1.0, 0.84, 0.0))
+	_play_sfx(null, "✨ GOLD CHIME ✨")
+
+func _on_player_collected_diamond(pos: Vector2) -> void:
+	_spawn_vfx(null, pos, Color(0.0, 0.9, 1.0))
+	_spawn_floating_text(pos, "+300", Color(0.0, 0.9, 1.0))
+	_play_sfx(null, "💎 DIAMOND SPARKLE CHIME 💎")
+
+func _spawn_floating_text(pos: Vector2, text: String, color: Color) -> void:
+	var label := Label.new()
+	label.text = text
+	label.global_position = pos + Vector2(-12, -8)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_font_size_override("font_size", 10)
+	add_child(label)
+	
+	var tween := create_tween()
+	tween.parallel().tween_property(label, "global_position", pos + Vector2(-12, -24), 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(label, "modulate", Color(1, 1, 1, 0), 0.5)
+	tween.tween_callback(label.queue_free)
 
 func _spawn_vfx(scene: PackedScene, pos: Vector2, fallback_color: Color) -> void:
 	if scene:

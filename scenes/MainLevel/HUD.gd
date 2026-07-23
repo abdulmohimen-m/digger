@@ -11,6 +11,8 @@ const COLOR_EMPTY: Color = Color(0.18, 0.18, 0.20)  # near-black
 var _shards: Array[Array] = []
 var _bomb_rects: Array[ColorRect] = []
 var _combo_label: Label
+var _gold_label: Label
+var _diamond_label: Label
 var _layer_label: Label
 var _bomb_container: HBoxContainer
 var _is_low_battery: bool = false
@@ -64,9 +66,24 @@ func _ready() -> void:
 		_bomb_rects.append(rect)
 	add_child(_bomb_container)
 
+	# Initialize Gold & Diamond counter labels
+	_gold_label = Label.new()
+	_gold_label.position = Vector2(10, 48)
+	_gold_label.text = "🟡 GOLD: 0"
+	_gold_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
+	_gold_label.add_theme_font_size_override("font_size", 11)
+	add_child(_gold_label)
+
+	_diamond_label = Label.new()
+	_diamond_label.position = Vector2(10, 64)
+	_diamond_label.text = "💎 DIAMOND: 0"
+	_diamond_label.add_theme_color_override("font_color", Color(0.0, 0.9, 1.0))
+	_diamond_label.add_theme_font_size_override("font_size", 11)
+	add_child(_diamond_label)
+
 	# Initialize combo label dynamically
 	_combo_label = Label.new()
-	_combo_label.position = Vector2(10, 50)
+	_combo_label.position = Vector2(10, 82)
 	_combo_label.text = ""
 	_combo_label.add_theme_color_override("font_color", Color("ffd700"))
 	_combo_label.add_theme_font_size_override("font_size", 14)
@@ -111,14 +128,40 @@ func _connect_to_player() -> void:
 		player.bombs_changed.connect(_on_bombs_changed)
 		player.low_battery_warning.connect(_on_low_battery_warning)
 		player.battery_depleted.connect(_on_battery_depleted)
+		if player.has_signal("gold_changed"):
+			player.gold_changed.connect(_on_gold_changed)
+		if player.has_signal("diamond_changed"):
+			player.diamond_changed.connect(_on_diamond_changed)
 		if player.has_signal("depth_changed"):
 			player.depth_changed.connect(_on_depth_changed)
 		# Sync immediately with current player state
 		player.battery_changed.emit(player.battery, player.MAX_BATTERY)
 		player.bombs_changed.emit(player.bombs, player.MAX_BOMBS)
+		if "gold_count" in player:
+			_on_gold_changed(player.gold_count)
+		if "diamond_count" in player:
+			_on_diamond_changed(player.diamond_count)
 		_on_combo_changed(player.combo_count)
 		if "current_depth" in player and player.has_method("get_biome_name"):
 			_on_depth_changed(player.current_depth, player.get_biome_name(player.current_depth))
+
+
+func _on_gold_changed(gold_count: int) -> void:
+	if _gold_label:
+		_gold_label.text = "🟡 GOLD: " + str(gold_count)
+		_gold_label.pivot_offset = _gold_label.size * 0.5
+		_gold_label.scale = Vector2(1.25, 1.25)
+		var tween := create_tween()
+		tween.tween_property(_gold_label, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+
+
+func _on_diamond_changed(diamond_count: int) -> void:
+	if _diamond_label:
+		_diamond_label.text = "💎 DIAMOND: " + str(diamond_count)
+		_diamond_label.pivot_offset = _diamond_label.size * 0.5
+		_diamond_label.scale = Vector2(1.25, 1.25)
+		var tween := create_tween()
+		tween.tween_property(_diamond_label, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 
 
 func _on_depth_changed(depth: int, biome_name: String) -> void:
@@ -217,8 +260,9 @@ func _show_game_over_overlay() -> void:
 
 	var player := get_tree().get_first_node_in_group("player")
 	var final_depth: int = player.current_depth if (player and "current_depth" in player) else 0
-	var final_wealth: int = player.wealth if (player and "wealth" in player) else 0
-	var final_score: int = player.get_total_score() if (player and player.has_method("get_total_score")) else (final_depth * 10 + final_wealth)
+	var final_gold: int = player.gold_count if (player and "gold_count" in player) else 0
+	var final_diamonds: int = player.diamond_count if (player and "diamond_count" in player) else 0
+	var final_score: int = player.get_total_score() if (player and player.has_method("get_total_score")) else (final_depth * 10 + final_gold * 100 + final_diamonds * 300)
 
 	_game_over_panel = PanelContainer.new()
 	_game_over_panel.anchors_preset = Control.PRESET_CENTER
@@ -262,7 +306,7 @@ func _show_game_over_overlay() -> void:
 
 	# Run Stats
 	var stats_lbl := Label.new()
-	stats_lbl.text = "Depth: " + str(final_depth) + "m  |  Wealth: $" + str(final_wealth) + "  |  SCORE: " + str(final_score)
+	stats_lbl.text = "Depth: " + str(final_depth) + "m  |  Gold: " + str(final_gold) + "  |  Diamond: " + str(final_diamonds) + "  |  SCORE: " + str(final_score)
 	stats_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stats_lbl.add_theme_color_override("font_color", Color(0.0, 1.0, 0.8)) # Cyan
 	stats_lbl.add_theme_font_size_override("font_size", 11)
