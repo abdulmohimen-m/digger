@@ -10,6 +10,8 @@ const SFX_POOL_SIZE := 16
 # Audio Streams Array & Map
 var _dig_streams: Array[AudioStream] = []
 var _last_dig_index: int = -1
+var _rock_dig_streams: Array[AudioStream] = []
+var _last_rock_dig_index: int = -1
 var _procedural_sfx: Dictionary = {}
 
 # Dedicated Stream Assets
@@ -17,6 +19,8 @@ var _collect_coin_stream: AudioStream
 var _collect_diamond_stream: AudioStream
 var _battery_charge_stream: AudioStream
 var _frenzy_transition_stream: AudioStream
+var _metal_hit_stream: AudioStream
+var _game_over_stream: AudioStream
 
 # Audio Players Pool
 var _sfx_players: Array[AudioStreamPlayer] = []
@@ -60,6 +64,14 @@ func _load_audio_assets() -> void:
 			if stream:
 				_dig_streams.append(stream)
 
+	# Load DigRock sound variations (DigRock1.ogg & DigRock2.ogg)
+	for i in range(1, 3):
+		var path := "res://assets/sfx/DigRock%d.ogg" % i
+		if ResourceLoader.exists(path) or FileAccess.file_exists(path):
+			var stream := load(path) as AudioStream
+			if stream:
+				_rock_dig_streams.append(stream)
+
 	# Load newly added SFX assets
 	if ResourceLoader.exists("res://assets/sfx/CollectCoin.ogg") or FileAccess.file_exists("res://assets/sfx/CollectCoin.ogg"):
 		_collect_coin_stream = load("res://assets/sfx/CollectCoin.ogg")
@@ -69,6 +81,10 @@ func _load_audio_assets() -> void:
 		_battery_charge_stream = load("res://assets/sfx/BatteryCharge.ogg")
 	if ResourceLoader.exists("res://assets/sfx/FrenzyTransition.ogg") or FileAccess.file_exists("res://assets/sfx/FrenzyTransition.ogg"):
 		_frenzy_transition_stream = load("res://assets/sfx/FrenzyTransition.ogg")
+	if ResourceLoader.exists("res://assets/sfx/MetalHit.ogg") or FileAccess.file_exists("res://assets/sfx/MetalHit.ogg"):
+		_metal_hit_stream = load("res://assets/sfx/MetalHit.ogg")
+	if ResourceLoader.exists("res://assets/sfx/GameOver.ogg") or FileAccess.file_exists("res://assets/sfx/GameOver.ogg"):
+		_game_over_stream = load("res://assets/sfx/GameOver.ogg")
 
 func _generate_procedural_fallbacks() -> void:
 	# Generates clean retro arcade WAV samples in memory for fallback SFX
@@ -162,6 +178,18 @@ func play_random_dig_sfx() -> void:
 	else:
 		play_sfx_key("dig", 0.05)
 
+func play_random_rock_dig_sfx() -> void:
+	if _rock_dig_streams.size() > 0:
+		var index := randi() % _rock_dig_streams.size()
+		if _rock_dig_streams.size() > 1 and index == _last_rock_dig_index:
+			index = (index + 1) % _rock_dig_streams.size()
+		_last_rock_dig_index = index
+		var stream = _rock_dig_streams[index]
+		var pitch = 1.0 + randf_range(-0.06, 0.06)
+		play_sfx(stream, pitch)
+	else:
+		play_sfx_key("hit_rock", 0.08)
+
 func _get_available_player() -> AudioStreamPlayer:
 	for player in _sfx_players:
 		if not player.playing:
@@ -177,10 +205,14 @@ func _on_moved_freely(_pos: Vector2) -> void:
 	play_sfx_key("move", 0.05)
 
 func _on_hit_wall(_pos: Vector2) -> void:
-	play_sfx_key("hit_wall", 0.05)
+	if _metal_hit_stream:
+		var pitch := 1.0 + randf_range(-0.05, 0.05)
+		play_sfx(_metal_hit_stream, pitch)
+	else:
+		play_sfx_key("hit_wall", 0.05)
 
 func _on_hit_rock(_pos: Vector2) -> void:
-	play_sfx_key("hit_rock", 0.08)
+	play_random_rock_dig_sfx()
 
 func _on_hit_mine(_pos: Vector2) -> void:
 	play_sfx_key("hit_mine", 0.1)
@@ -222,7 +254,10 @@ func _on_low_battery_warning(is_low: bool) -> void:
 
 func _on_battery_depleted(_pos: Vector2) -> void:
 	_set_music_lowpass_filter(false)
-	play_sfx_key("battery_depleted", 0.0)
+	if _game_over_stream:
+		play_sfx(_game_over_stream, 1.0)
+	else:
+		play_sfx_key("battery_depleted", 0.0)
 
 func _on_frenzy_tier_changed(tier: int) -> void:
 	if tier > 0:
