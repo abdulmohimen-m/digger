@@ -15,11 +15,20 @@ var _bomb_container: HBoxContainer
 var _is_low_battery: bool = false
 var _pulse_timer: float = 0.0
 var _current_active_color: Color = COLOR_FULL
+var _vignette: ColorRect = null
 
 @onready var _container: HBoxContainer = $BatteryContainer
 
 
 func _ready() -> void:
+	# Create red screen vignette overlay
+	_vignette = ColorRect.new()
+	_vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_vignette.color = Color(1.0, 0.0, 0.0, 0.0)
+	_vignette.z_index = -1
+	add_child(_vignette)
+
 	_container.add_theme_constant_override("separation", 3)
 
 	for i in SHARD_COUNT:
@@ -71,6 +80,11 @@ func _process(delta: float) -> void:
 		var pulse: float = (sin(_pulse_timer) + 1.0) * 0.5
 		_current_active_color = COLOR_FULL.lerp(COLOR_ALERT, pulse)
 		_update_shard_colors()
+		if _vignette:
+			_vignette.color = Color(1.0, 0.0, 0.0, pulse * 0.22)
+	else:
+		if _vignette and _vignette.color.a > 0.0:
+			_vignette.color = Color(1.0, 0.0, 0.0, 0.0)
 
 
 func _connect_to_player() -> void:
@@ -107,7 +121,13 @@ func _update_shard_colors() -> void:
 
 func _on_low_battery_warning(is_low: bool) -> void:
 	_is_low_battery = is_low
-	if not _is_low_battery:
+	if _is_low_battery:
+		# Scale punch HUD battery container to grab immediate attention
+		_container.pivot_offset = Vector2(0, _container.size.y * 0.5)
+		_container.scale = Vector2(1.25, 1.25)
+		var tween := create_tween()
+		tween.tween_property(_container, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+	else:
 		_current_active_color = COLOR_FULL
 		_update_shard_colors()
 

@@ -16,10 +16,11 @@ This document logs all the features, logic, and polish implemented during this d
 ### 2. Battery & Recharge System
 - **Recharge Tiles:** Battery recharge canister tiles (sprite coordinates `(47, 9)`) spawned in the dirt layout.
 - **Recharging:** Landing on a recharge tile automatically erases it and restores **3.0 shards** of battery (capped at 10.0). No battery is consumed for the step.
-- **⚠️ Low-Battery Warning System ($\le 2.5$ Shards):**
-  - **HUD Pulsing:** Remaining filled battery shards pulse smoothly between warm gold and alert red via a sine wave in `HUD.gd`.
-  - **Sputtering Smoke VFX:** Vehicle emits sputtering dark grey smoke particles (`CPUParticles2D`) while moving/digging.
-  - **Warning Audio:** Triggers a warning alarm beep SFX log to alert the player.
+- **⚠️ Enhanced Low-Battery Warning System ($\le 3.0$ Shards / $30\%$ Capacity):**
+  - **Screen Edge Red Vignette:** A soft pulsing red edge overlay pulses across the screen while in low battery state.
+  - **Floating Vehicle Warning Icon:** A bold `⚠️ LOW BAT` flashing text label floats directly above the player vehicle sprite.
+  - **HUD Container Scale Punch:** `$BatteryContainer` pops up $1.25\times$ with scale-punch spring animation when warning triggers, while remaining filled shards pulse gold/red.
+  - **Step-by-Step Sputter Sparks & SFX:** Emits electric yellow sparks and dark smoke particle puffs on every dig step along with sputtering engine audio logs.
 - **🛑 Battery Depletion Breakdown Sequence ($0.0$ Battery):**
   - **1.0s Multi-Stage Power-Down:** Player movement locks instantly upon depletion.
   - **Engine Stall & Sparks:** Vehicle sprite stutters/shakes, squashes/stretches, and dims to an unpowered dark grey tint (`#40404c`).

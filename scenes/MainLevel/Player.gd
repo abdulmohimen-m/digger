@@ -30,7 +30,7 @@ const TILE_DIRT: Vector2i = Vector2i(32, 15)
 const MAX_BOMBS: int = 3
 const BOMB_BATTERY_COST: float = 3.0
 const ROCK_DRILL_DELAY: float = 0.4
-const LOW_BATTERY_THRESHOLD: float = 2.5
+const LOW_BATTERY_THRESHOLD: float = 3.0
 
 # Map horizontal bounds (tile columns 1-10 are playable)
 const MAP_MIN_X: float = 1.0 * TILE_SIZE + TILE_SIZE * 0.5   # center of col 1
@@ -48,6 +48,7 @@ var _is_digging: bool = false
 var _is_busy: bool = false
 var _is_low_battery: bool = false
 var _is_depleted: bool = false
+var _low_bat_label: Label = null
 var frenzy_level: int = 0
 var is_frenzy: bool:
 	get: return frenzy_level >= 1
@@ -63,6 +64,17 @@ func _ready() -> void:
 	_target_position = global_position
 	battery_changed.emit(battery, MAX_BATTERY)
 	bombs_changed.emit(bombs, MAX_BOMBS)
+	
+	# Setup floating LOW BAT warning icon above vehicle
+	_low_bat_label = Label.new()
+	_low_bat_label.text = "⚠️ LOW BAT"
+	_low_bat_label.add_theme_color_override("font_color", Color(1.0, 0.25, 0.25))
+	_low_bat_label.add_theme_font_size_override("font_size", 9)
+	_low_bat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_low_bat_label.position = Vector2(-24, -18)
+	_low_bat_label.custom_minimum_size = Vector2(48, 12)
+	_low_bat_label.visible = false
+	add_child(_low_bat_label)
 
 
 func _physics_process(delta: float) -> void:
@@ -281,10 +293,21 @@ func _recharge_battery(amount: float) -> void:
 	_check_battery_state()
 
 
+func _process(delta: float) -> void:
+	if _is_low_battery and _low_bat_label and _low_bat_label.visible:
+		var pulse: float = (sin(Time.get_ticks_msec() * 0.012) + 1.0) * 0.5
+		_low_bat_label.modulate = Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.2, 0.2), pulse)
+		var scale_factor: float = 0.9 + pulse * 0.25
+		_low_bat_label.scale = Vector2(scale_factor, scale_factor)
+		_low_bat_label.pivot_offset = _low_bat_label.size * 0.5
+
+
 func _check_battery_state() -> void:
 	var is_low: bool = battery <= LOW_BATTERY_THRESHOLD and battery > 0.0
 	if is_low != _is_low_battery:
 		_is_low_battery = is_low
+		if _low_bat_label:
+			_low_bat_label.visible = _is_low_battery
 		low_battery_warning.emit(_is_low_battery)
 		
 	if battery <= 0.0 and not _is_depleted:
@@ -294,6 +317,8 @@ func _check_battery_state() -> void:
 func _trigger_battery_depletion() -> void:
 	_is_depleted = true
 	_is_busy = true
+	if _low_bat_label:
+		_low_bat_label.visible = false
 	if _is_low_battery:
 		_is_low_battery = false
 		low_battery_warning.emit(false)
