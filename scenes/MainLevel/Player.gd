@@ -24,6 +24,7 @@ const TILE_BATTERY: Vector2i = Vector2i(47, 9)
 const BATTERY_RECHARGE_AMOUNT: float = 3.0
 const TILE_BOMB: Vector2i = Vector2i(45, 9)
 const TILE_UNDIGGABLE: Vector2i = Vector2i(39, 15)
+const TILE_WALL: Vector2i = Vector2i(3, 0)
 const TILE_ROCK: Vector2i = Vector2i(10, 17)
 const TILE_CRACKED_ROCK: Vector2i = Vector2i(11, 17)
 const TILE_DIRT: Vector2i = Vector2i(32, 15)
@@ -152,7 +153,7 @@ func _try_move(dir: Vector2i) -> void:
 			_increment_combo()
 			_play_impact_lunge(dir)
 			return
-		elif atlas == TILE_UNDIGGABLE:
+		elif atlas == TILE_UNDIGGABLE or atlas == TILE_WALL:
 			_trigger_wall_hit(target_pos, dir)
 			return
 		elif atlas == TILE_ROCK or atlas == TILE_CRACKED_ROCK:

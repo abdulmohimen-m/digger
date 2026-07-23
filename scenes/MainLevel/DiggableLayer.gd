@@ -1,22 +1,101 @@
 extends TileMapLayer
 
+@export var map_width: int = 10
+@export var map_depth: int = 500
+@export var seed_value: int = 0
+
 const TILE_BATTERY = Vector2i(47, 9)
 const TILE_BOMB = Vector2i(45, 9)
 const TILE_UNDIGGABLE = Vector2i(39, 15)
 const TILE_ROCK = Vector2i(10, 17)
 const TILE_CRACKED_ROCK = Vector2i(11, 17)
 const TILE_DIRT = Vector2i(32, 15)
+const TILE_WALL = Vector2i(3, 0)
+
+const SOURCE_ID: int = 1
+
 
 func _ready() -> void:
-	# Place a few battery recharge, bomb, undiggable, and rocky tiles inside the starting dirt block for testing
-	set_cell(Vector2i(3, 5), 1, TILE_BATTERY)
-	set_cell(Vector2i(7, 6), 1, TILE_BOMB)
-	set_cell(Vector2i(5, 8), 1, TILE_BATTERY)
-	set_cell(Vector2i(8, 7), 1, TILE_BOMB)
-	set_cell(Vector2i(4, 5), 1, TILE_UNDIGGABLE)
-	set_cell(Vector2i(6, 7), 1, TILE_UNDIGGABLE)
-	set_cell(Vector2i(3, 6), 1, TILE_ROCK)
-	set_cell(Vector2i(5, 7), 1, TILE_ROCK)
+	generate_map()
+
+
+## Procedurally generates the 10-column wide by 500-row deep level across 3 biomes.
+func generate_map() -> void:
+	clear()
+	var rng := RandomNumberGenerator.new()
+	if seed_value != 0:
+		rng.seed = seed_value
+	else:
+		rng.randomize()
+
+	var rows_since_battery: int = 0
+	var next_guaranteed_battery_row: int = rng.randi_range(8, 12)
+
+	for y in range(map_depth):
+		# Draw indestructible side border walls (column 0 and column map_width + 1)
+		set_cell(Vector2i(0, y), SOURCE_ID, TILE_WALL)
+		set_cell(Vector2i(map_width + 1, y), SOURCE_ID, TILE_WALL)
+
+		# Absolute bottom row: complete metallic indestructible floor
+		if y == map_depth - 1:
+			for x in range(1, map_width + 1):
+				set_cell(Vector2i(x, y), SOURCE_ID, TILE_WALL)
+			continue
+
+		# Surface spawn clearing (rows 0 to 3) for clean player onboarding
+		if y < 4:
+			continue
+
+		# Guaranteed battery spawn counter check
+		rows_since_battery += 1
+		var forced_battery_col: int = -1
+		if rows_since_battery >= next_guaranteed_battery_row:
+			forced_battery_col = rng.randi_range(1, map_width)
+			rows_since_battery = 0
+			next_guaranteed_battery_row = rng.randi_range(8, 12)
+
+		for x in range(1, map_width + 1):
+			if x == forced_battery_col:
+				set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
+				continue
+
+			var roll: float = rng.randf()
+
+			# --- BIOME 1: Normal Soil (Depth 4 to 150) ---
+			if y <= 150:
+				if roll < 0.05:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
+				elif roll < 0.10:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
+				elif roll < 0.15:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
+				else:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
+
+			# --- BIOME 2: Rocky Soil (Depth 151 to 350) ---
+			elif y <= 350:
+				if roll < 0.25:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
+				elif roll < 0.30:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
+				elif roll < 0.37:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
+				else:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
+
+			# --- BIOME 3: Ancient Mines (Depth 351 to 498) ---
+			else:
+				if roll < 0.15:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_UNDIGGABLE)
+				elif roll < 0.45:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
+				elif roll < 0.50:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
+				elif roll < 0.55:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
+				else:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
+
 
 ## Returns true if a diggable tile was found and erased at the given cell.
 func try_dig(cell: Vector2i) -> bool:
@@ -25,7 +104,9 @@ func try_dig(cell: Vector2i) -> bool:
 	erase_cell(cell)
 	return true
 
+
 ## Returns true if the cell contains no tile (empty / already dug).
 func is_empty(cell: Vector2i) -> bool:
 	return get_cell_source_id(cell) == -1
+
 

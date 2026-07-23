@@ -6,6 +6,16 @@ This document logs all the features, logic, and polish implemented during this d
 
 ## 🚀 Core Systems
 
+### 0. Startup Procedural Map Generation
+- **Level Dimensions:** 10 playable columns (columns 1 to 10) x 500 rows deep, framed by indestructible side border walls (`col 0` and `col 11`) and a metallic floor (`row 499`).
+- **Surface Onboarding Zone:** Rows 0 to 3 are cleared of tiles to guarantee safe vehicle spawning and controls familiarization.
+- **3-Biome Progression:**
+  - **Biome 1 (Normal Soil - Depth 4 to 150):** 85% Soft Dirt, 5% Rock, 5% Battery Canisters, 5% Bomb Canisters.
+  - **Biome 2 (Rocky Layer - Depth 151 to 350):** 60% Soft Dirt, 25% 3-Hit Rock, 8% Battery Canisters, 7% Bomb Canisters.
+  - **Biome 3 (Ancient Mines - Depth 351 to 498):** 45% Soft Dirt, 30% Rock, 15% Undiggable Wall Blocks, 5% Battery, 5% Bomb.
+- **Guaranteed Battery Spawning:** Enforces a safety rule spawning at least 1 battery canister every 8-12 depth rows to eliminate unwinnable drought bottlenecks.
+- **Seed Configuration:** Exposes `@export var seed_value: int = 0` (`0` = randomized on boot; non-zero = reproducible seed).
+
 ### 1. Grid-Locked Movement & Digging
 - **Grid Size & Snap:** All coordinates snaped to a 16px grid.
 - **Directional Digging:**

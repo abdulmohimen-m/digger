@@ -14,6 +14,12 @@ func _ready() -> void:
 	randomize()
 	_noise_x = randf() * 10000.0
 
+	var dirt_layer: TileMapLayer = get_node_or_null("../../Tilemaps/DirtLayer")
+	if dirt_layer and "map_depth" in dirt_layer:
+		limit_bottom = dirt_layer.map_depth * 16
+	else:
+		limit_bottom = 8000
+
 func shake(strength: float = 8.0) -> void:
 	_shake_strength = strength
 
