@@ -12,6 +12,12 @@ var _dig_streams: Array[AudioStream] = []
 var _last_dig_index: int = -1
 var _procedural_sfx: Dictionary = {}
 
+# Dedicated Stream Assets
+var _collect_coin_stream: AudioStream
+var _collect_diamond_stream: AudioStream
+var _battery_charge_stream: AudioStream
+var _frenzy_transition_stream: AudioStream
+
 # Audio Players Pool
 var _sfx_players: Array[AudioStreamPlayer] = []
 var _bgm_player: AudioStreamPlayer
@@ -53,6 +59,16 @@ func _load_audio_assets() -> void:
 			var stream := load(path) as AudioStream
 			if stream:
 				_dig_streams.append(stream)
+
+	# Load newly added SFX assets
+	if ResourceLoader.exists("res://assets/sfx/CollectCoin.ogg") or FileAccess.file_exists("res://assets/sfx/CollectCoin.ogg"):
+		_collect_coin_stream = load("res://assets/sfx/CollectCoin.ogg")
+	if ResourceLoader.exists("res://assets/sfx/CollectDiamond.ogg") or FileAccess.file_exists("res://assets/sfx/CollectDiamond.ogg"):
+		_collect_diamond_stream = load("res://assets/sfx/CollectDiamond.ogg")
+	if ResourceLoader.exists("res://assets/sfx/BatteryCharge.ogg") or FileAccess.file_exists("res://assets/sfx/BatteryCharge.ogg"):
+		_battery_charge_stream = load("res://assets/sfx/BatteryCharge.ogg")
+	if ResourceLoader.exists("res://assets/sfx/FrenzyTransition.ogg") or FileAccess.file_exists("res://assets/sfx/FrenzyTransition.ogg"):
+		_frenzy_transition_stream = load("res://assets/sfx/FrenzyTransition.ogg")
 
 func _generate_procedural_fallbacks() -> void:
 	# Generates clean retro arcade WAV samples in memory for fallback SFX
@@ -171,15 +187,27 @@ func _on_hit_mine(_pos: Vector2) -> void:
 
 func _on_collected_battery(_pos: Vector2) -> void:
 	play_random_dig_sfx()
-	play_sfx_key("battery", 0.04)
+	if _battery_charge_stream:
+		var pitch := 1.0 + randf_range(-0.04, 0.04)
+		play_sfx(_battery_charge_stream, pitch)
+	else:
+		play_sfx_key("battery", 0.04)
 
 func _on_collected_gold(_pos: Vector2) -> void:
 	play_random_dig_sfx()
-	play_sfx_key("gold", 0.04)
+	if _collect_coin_stream:
+		var pitch := 1.0 + randf_range(-0.04, 0.04)
+		play_sfx(_collect_coin_stream, pitch)
+	else:
+		play_sfx_key("gold", 0.04)
 
 func _on_collected_diamond(_pos: Vector2) -> void:
 	play_random_dig_sfx()
-	play_sfx_key("diamond", 0.04)
+	if _collect_diamond_stream:
+		var pitch := 1.0 + randf_range(-0.04, 0.04)
+		play_sfx(_collect_diamond_stream, pitch)
+	else:
+		play_sfx_key("diamond", 0.04)
 
 func _on_placed_bomb(_pos: Vector2) -> void:
 	play_sfx_key("placed_bomb", 0.05)
@@ -198,10 +226,13 @@ func _on_battery_depleted(_pos: Vector2) -> void:
 
 func _on_frenzy_tier_changed(tier: int) -> void:
 	if tier > 0:
-		var pitch := 1.0 + (tier * 0.1)
-		var stream: AudioStream = _procedural_sfx.get("frenzy", null)
-		if stream:
-			play_sfx(stream, pitch)
+		var pitch := 1.0 + ((tier - 1) * 0.1) # 1.0x for Tier 1 up to 1.4x for Tier 5
+		if _frenzy_transition_stream:
+			play_sfx(_frenzy_transition_stream, pitch)
+		else:
+			var stream: AudioStream = _procedural_sfx.get("frenzy", null)
+			if stream:
+				play_sfx(stream, pitch)
 
 func _on_ui_button_clicked() -> void:
 	play_sfx_key("ui_click", 0.02, &"UI")
