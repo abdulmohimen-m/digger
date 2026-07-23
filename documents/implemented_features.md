@@ -21,11 +21,11 @@ This document logs all the features, logic, and polish implemented during this d
 - **HUD Biome Display:** Top-right anchored `_layer_label` displays current depth in meters and active biome name (e.g. `📍 DEPTH: 42m | Layer 1: Normal Soil`).
 - **Biome Transition Punch:** Plays a spring scale-punch animation when transitioning into a new biome layer (Surface -> Layer 1 -> Layer 2 -> Layer 3).
 
-### 0.2 SKG-Compliant Local Leaderboard & Game Over Overlay
-- **Local Persistence (`user://local_leaderboard.cfg`):** Uses Godot's safe `ConfigFile` to save high scores directly on local hardware without central server dependencies, fully adhering to Stop Killing Games preservation goals.
+### 0.2 SilentWolf REST API Online Leaderboard & SKG Fallback
+- **Online Integration (`SilentWolf REST API`):** Asynchronously posts and fetches global scores using native Godot `HTTPRequest` nodes configured for game `digger` (no external plugin/addon required).
+- **Hybrid SKG Local Persistence (`user://local_leaderboard.cfg`):** Every score submission is written to local hardware *first* before making the API request. If network connection fails or server is offline, the game automatically displays local high scores tagged as `--- LOCAL SKG LEADERBOARD (OFFLINE) ---`.
 - **Run Score Calculation:** Combined Score metric: `(Max Depth * 10) + Total Wealth Collected`.
-- **Game Over Overlay Modal:** Automatically pops up on `CanvasLayer` 1.2s after battery depletion with entrance animation, displaying stats summary, name LineEdit input, "Submit Score" button, Top 10 leaderboard table, and a "Play Again" restart button.
-- **Autoload Singleton (`Leaderboard.gd`):** Manages disk read/write operations, sorts scores descending, and caps records at top 10.
+- **Game Over Overlay Modal:** Automatically pops up on `CanvasLayer` 1.2s after battery depletion with pop-in animation, displaying stats summary, name LineEdit input, "Submit Score" button, dynamic top 10 leaderboard table with online/offline indicator, and a "Play Again" restart button.
 
 ### 1. Grid-Locked Movement & Digging
 - **Grid Size & Snap:** All coordinates snaped to a 16px grid.

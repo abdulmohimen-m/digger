@@ -208,6 +208,7 @@ func _on_battery_depleted(_pos: Vector2) -> void:
 
 var _game_over_panel: Control = null
 var _scores_vbox: VBoxContainer = null
+var _board_title_lbl: Label = null
 
 
 func _show_game_over_overlay() -> void:
@@ -286,12 +287,12 @@ func _show_game_over_overlay() -> void:
 	input_hbox.add_child(submit_btn)
 
 	# Leaderboard Board Title
-	var board_title := Label.new()
-	board_title.text = "--- TOP 10 SKG LOCAL LEADERBOARD ---"
-	board_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	board_title.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
-	board_title.add_theme_font_size_override("font_size", 10)
-	main_vbox.add_child(board_title)
+	_board_title_lbl = Label.new()
+	_board_title_lbl.text = "--- LEADERBOARD (CONNECTING...) ---"
+	_board_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_board_title_lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	_board_title_lbl.add_theme_font_size_override("font_size", 10)
+	main_vbox.add_child(_board_title_lbl)
 
 	# High Scores Scroll / Container
 	var scroll := ScrollContainer.new()
@@ -312,6 +313,7 @@ func _show_game_over_overlay() -> void:
 		submit_btn.disabled = true
 		submit_btn.text = "SAVED! ✔"
 		name_input.editable = false
+		await get_tree().create_timer(0.5).timeout
 		_refresh_leaderboard_display()
 	)
 
@@ -339,13 +341,37 @@ func _refresh_leaderboard_display() -> void:
 	if not _scores_vbox:
 		return
 
-	# Clear previous entries
+	# Show temporary loading state
 	for child in _scores_vbox.get_children():
 		child.queue_free()
 
-	var top_scores: Array = []
+	var loading_lbl := Label.new()
+	loading_lbl.text = "Fetching Leaderboard..."
+	loading_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	loading_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+	loading_lbl.add_theme_font_size_override("font_size", 10)
+	_scores_vbox.add_child(loading_lbl)
+
 	if Leaderboard:
-		top_scores = Leaderboard.get_top_scores()
+		if not Leaderboard.online_scores_fetched.is_connected(_on_online_scores_received):
+			Leaderboard.online_scores_fetched.connect(_on_online_scores_received)
+		Leaderboard.fetch_top_scores_hybrid()
+
+
+func _on_online_scores_received(top_scores: Array[Dictionary], is_online: bool) -> void:
+	if not _scores_vbox:
+		return
+
+	for child in _scores_vbox.get_children():
+		child.queue_free()
+
+	if _board_title_lbl:
+		if is_online:
+			_board_title_lbl.text = "--- GLOBAL LEADERBOARD (ONLINE) ---"
+			_board_title_lbl.add_theme_color_override("font_color", Color(0.0, 0.9, 0.4)) # Emerald Green
+		else:
+			_board_title_lbl.text = "--- LOCAL SKG LEADERBOARD (OFFLINE) ---"
+			_board_title_lbl.add_theme_color_override("font_color", Color(0.9, 0.6, 0.2)) # Orange
 
 	if top_scores.is_empty():
 		var empty_lbl := Label.new()

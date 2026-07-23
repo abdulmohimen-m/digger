@@ -18,6 +18,11 @@ config/icon="res://icon.svg"
 [autoload]
 
 Leaderboard="*res://scenes/MainLevel/Leaderboard.gd"
+SilentWolf="*uid://bnmwi5flambo6"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/silent_wolf/plugin.cfg")
 
 [physics]
 
