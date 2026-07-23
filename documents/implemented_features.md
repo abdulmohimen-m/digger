@@ -57,12 +57,16 @@ This document logs all the features, logic, and polish implemented during this d
 - **Blast Penalty:** Standing inside the 3x3 blast area when it detonates deals a **5.0 battery damage penalty** to the player.
 
 ### 5. Undiggable Tiles & Wall Boundaries System
-- **Hard Obstacles:** Undiggable tiles (sprite coordinates `(39, 15)`), perimeter walls, and map boundaries block player movement.
+- **Hard Obstacles:** Undiggable metal tiles (sprite coordinates `(39, 15)`), perimeter walls, and map boundaries block player movement.
+- **Multi-Biome Progression:** Introduced from the first level with progressive density scaling:
+  - **Biome 1 (Normal Soil):** 3% Low Density (introduces navigational hazard early).
+  - **Biome 2 (Rocky Soil):** 8% Medium Density.
+  - **Biome 3 (Ancient Mines):** 15% High Density.
 - **Unified 0.3s Impact Cooldown:**
   - Bumping an undiggable tile or wall boundary instantly resets combo and emits `hit_wall` feedback (camera shake & metallic clink SFX).
   - Enforces a standardized **0.3-second input cooldown** via `_trigger_wall_hit()`, matching the Rocky Tile hit rhythm.
   - Holding down a directional key against any wall plays a clean, satisfying 0.3s rhythmic bump without audio or screen-shake spam.
-- **Bomb Destructible:** Undiggable tiles **can** be destroyed using bombs (unlike perimeter map edge walls).
+- **Bomb Destructible:** Undiggable metal blocks **can** be destroyed using bombs (unlike perimeter map edge walls).
 
 ### 6. Rocky Tiles System
 - **3-Hit Durability Progression:** Rocky tiles (sprite coordinates `(10, 17)`) require **3 hits** total to break through.

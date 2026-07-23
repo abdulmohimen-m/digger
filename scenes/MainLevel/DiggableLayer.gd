@@ -68,15 +68,17 @@ func generate_map() -> void:
 			if y <= 150:
 				if roll < 0.04:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_MINE)
-				elif roll < 0.09:
+				elif roll < 0.07:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_UNDIGGABLE)
+				elif roll < 0.12:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
-				elif roll < 0.14:
+				elif roll < 0.17:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
-				elif roll < 0.19:
+				elif roll < 0.22:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
-				elif roll < 0.27:
+				elif roll < 0.30:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_GOLD)
-				elif roll < 0.28:
+				elif roll < 0.31:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIAMOND)
 				else:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
@@ -85,15 +87,17 @@ func generate_map() -> void:
 			elif y <= 350:
 				if roll < 0.06:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_MINE)
-				elif roll < 0.31:
+				elif roll < 0.14:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_UNDIGGABLE)
+				elif roll < 0.39:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
-				elif roll < 0.36:
+				elif roll < 0.44:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
-				elif roll < 0.43:
+				elif roll < 0.50:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
-				elif roll < 0.53:
+				elif roll < 0.60:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_GOLD)
-				elif roll < 0.57:
+				elif roll < 0.64:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIAMOND)
 				else:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
