@@ -53,8 +53,10 @@ var battery: float = MAX_BATTERY
 var bombs: int = MAX_BOMBS
 var combo_count: int = 0
 var _is_moving: bool = false
+var _last_emitted_moving: bool = false
 var _target_position: Vector2
 var _current_move_speed: float = MOVE_SPEED_FREE
+var _last_emitted_speed: float = -1.0
 var _is_digging: bool = false
 var _is_busy: bool = false
 var _is_low_battery: bool = false
@@ -122,6 +124,10 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	# Frozen if battery is out
 	if battery <= 0.0:
+		if _last_emitted_moving:
+			_last_emitted_moving = false
+			if EventBus:
+				EventBus.vehicle_movement_updated.emit(false, 0.0)
 		return
 
 	if Input.is_action_just_pressed("ui_accept"):
@@ -140,28 +146,29 @@ func _physics_process(delta: float) -> void:
 			_is_digging = false
 			_sprite.position = Vector2.ZERO
 			_update_depth_tracker()
-		return
 
-	# Frozen if battery is out and we are not currently moving
-	if battery <= 0.0:
-		return
+	if not _is_moving and not _is_busy:
+		var dir := Vector2i.ZERO
+		if Input.is_action_pressed("ui_right"):
+			dir = Vector2i(1, 0)
+		elif Input.is_action_pressed("ui_left"):
+			dir = Vector2i(-1, 0)
+		elif Input.is_action_pressed("ui_down"):
+			dir = Vector2i(0, 1)
+		elif Input.is_action_pressed("ui_up"):
+			dir = Vector2i(0, -1)
 
-	var dir := Vector2i.ZERO
-	if Input.is_action_pressed("ui_right"):
-		dir = Vector2i(1, 0)
-	elif Input.is_action_pressed("ui_left"):
-		dir = Vector2i(-1, 0)
-	elif Input.is_action_pressed("ui_down"):
-		dir = Vector2i(0, 1)
-	elif Input.is_action_pressed("ui_up"):
-		dir = Vector2i(0, -1)
+		if dir == Vector2i.ZERO:
+			if combo_count > 0:
+				_reset_combo()
+		else:
+			_try_move(dir)
 
-	if dir == Vector2i.ZERO:
-		if combo_count > 0:
-			_reset_combo()
-		return
-
-	_try_move(dir)
+	if _is_moving != _last_emitted_moving or (_is_moving and _current_move_speed != _last_emitted_speed):
+		_last_emitted_moving = _is_moving
+		_last_emitted_speed = _current_move_speed
+		if EventBus:
+			EventBus.vehicle_movement_updated.emit(_is_moving, _current_move_speed)
 
 
 func _try_move(dir: Vector2i) -> void:

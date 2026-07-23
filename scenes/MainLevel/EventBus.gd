@@ -14,6 +14,7 @@ signal detonated_bomb(pos: Vector2)
 signal low_battery_warning(is_low: bool)
 signal battery_depleted(pos: Vector2)
 signal frenzy_tier_changed(tier: int)
+signal vehicle_movement_updated(is_moving: bool, current_speed: float)
 
 # --- UI & Meta Signals ---
 signal ui_button_clicked()

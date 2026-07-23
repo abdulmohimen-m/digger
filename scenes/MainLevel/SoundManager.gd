@@ -23,10 +23,14 @@ var _metal_hit_stream: AudioStream
 var _game_over_stream: AudioStream
 var _explosion_stream: AudioStream
 var _bomb_drop_stream: AudioStream
+var _drill_loop_stream: AudioStream
 
 # Audio Players Pool
 var _sfx_players: Array[AudioStreamPlayer] = []
 var _bgm_player: AudioStreamPlayer
+var _drill_loop_player: AudioStreamPlayer
+var _drill_loop_tween: Tween
+var _is_drill_loop_active: bool = false
 var _bgm_lowpass_active: bool = false
 
 # Master Volume Cache (linear 0.0 to 1.0)
@@ -55,6 +59,11 @@ func _init_audio_pool() -> void:
 	_bgm_player = AudioStreamPlayer.new()
 	_bgm_player.bus = &"Music"
 	add_child(_bgm_player)
+
+	# Dedicated Drill Loop player
+	_drill_loop_player = AudioStreamPlayer.new()
+	_drill_loop_player.bus = &"SFX"
+	add_child(_drill_loop_player)
 
 # --- Asset Loading & Procedural Fallbacks ---
 func _load_audio_assets() -> void:
@@ -91,6 +100,11 @@ func _load_audio_assets() -> void:
 		_explosion_stream = load("res://assets/sfx/Explosion.ogg")
 	if ResourceLoader.exists("res://assets/sfx/BombDrop.ogg") or FileAccess.file_exists("res://assets/sfx/BombDrop.ogg"):
 		_bomb_drop_stream = load("res://assets/sfx/BombDrop.ogg")
+	if ResourceLoader.exists("res://assets/sfx/DrilLoop.ogg") or FileAccess.file_exists("res://assets/sfx/DrilLoop.ogg"):
+		_drill_loop_stream = load("res://assets/sfx/DrilLoop.ogg")
+		if _drill_loop_stream is AudioStreamOggVorbis:
+			_drill_loop_stream.loop = true
+		_drill_loop_player.stream = _drill_loop_stream
 
 func _generate_procedural_fallbacks() -> void:
 	# Generates clean retro arcade WAV samples in memory for fallback SFX
@@ -152,6 +166,7 @@ func _connect_event_bus() -> void:
 	EventBus.low_battery_warning.connect(_on_low_battery_warning)
 	EventBus.battery_depleted.connect(_on_battery_depleted)
 	EventBus.frenzy_tier_changed.connect(_on_frenzy_tier_changed)
+	EventBus.vehicle_movement_updated.connect(_on_vehicle_movement_updated)
 	EventBus.ui_button_clicked.connect(_on_ui_button_clicked)
 	EventBus.ui_button_hovered.connect(_on_ui_button_hovered)
 
@@ -208,7 +223,8 @@ func _on_dug_tile(_pos: Vector2, _color: Color) -> void:
 	play_random_dig_sfx()
 
 func _on_moved_freely(_pos: Vector2) -> void:
-	play_sfx_key("move", 0.05)
+	# Continuous engine loop (DrilLoop.ogg) handles free movement audio without extra step ticks
+	pass
 
 func _on_hit_wall(_pos: Vector2) -> void:
 	if _metal_hit_stream:
@@ -272,10 +288,40 @@ func _on_low_battery_warning(is_low: bool) -> void:
 
 func _on_battery_depleted(_pos: Vector2) -> void:
 	_set_music_lowpass_filter(false)
+	_is_drill_loop_active = false
+	if _drill_loop_player and _drill_loop_player.playing:
+		_drill_loop_player.stop()
 	if _game_over_stream:
 		play_sfx(_game_over_stream, 1.0)
 	else:
 		play_sfx_key("battery_depleted", 0.0)
+
+func _on_vehicle_movement_updated(is_moving: bool, current_speed: float) -> void:
+	if not _drill_loop_stream:
+		return
+		
+	if _drill_loop_tween and _drill_loop_tween.is_valid():
+		_drill_loop_tween.kill()
+		
+	_drill_loop_tween = create_tween()
+	
+	if is_moving:
+		_is_drill_loop_active = true
+		var target_pitch := remap(clamp(current_speed, 53.0, 160.0), 53.0, 160.0, 1.0, 1.6)
+		_drill_loop_tween.parallel().tween_property(_drill_loop_player, "pitch_scale", target_pitch, 0.08)
+		
+		if not _drill_loop_player.playing:
+			_drill_loop_player.volume_db = -80.0
+			_drill_loop_player.play()
+			
+		_drill_loop_tween.parallel().tween_property(_drill_loop_player, "volume_db", linear_to_db(volume_sfx), 0.08)
+	else:
+		_is_drill_loop_active = false
+		_drill_loop_tween.tween_property(_drill_loop_player, "volume_db", -80.0, 0.08)
+		_drill_loop_tween.tween_callback(func():
+			if not _is_drill_loop_active:
+				_drill_loop_player.stop()
+		)
 
 func _on_frenzy_tier_changed(tier: int) -> void:
 	if tier > 0:
