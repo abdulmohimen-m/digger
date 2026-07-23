@@ -7,7 +7,7 @@ const LEADERBOARD_NAME: String = "main"
 
 # --- LOCAL SKG FALLBACK CONFIGURATION ---
 const SAVE_PATH: String = "user://local_leaderboard.cfg"
-const MAX_BOARD_ENTRIES: int = 10
+const MAX_BOARD_ENTRIES: int = 50
 
 signal online_scores_fetched(scores: Array[Dictionary], is_online: bool)
 
@@ -86,7 +86,7 @@ func _post_score_online(player_name: String, final_score: int, final_depth: int)
 ## Fetches top scores: Tries online SilentWolf backend first, seamlessly falls back to local.
 func fetch_top_scores_hybrid() -> void:
 	await SilentWolf.check_scores_ready()
-	SilentWolf.Scores.get_scores(10, LEADERBOARD_NAME)
+	SilentWolf.Scores.get_scores(50, LEADERBOARD_NAME)
 
 	var sw_result = await SilentWolf.Scores.sw_get_scores_complete
 	if sw_result.get("success", false):

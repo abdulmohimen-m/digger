@@ -7,6 +7,25 @@ const COLOR_FULL: Color  = Color(1.00, 0.82, 0.05)  # warm gold
 const COLOR_ALERT: Color = Color(1.00, 0.15, 0.15)  # pulse red
 const COLOR_EMPTY: Color = Color(0.18, 0.18, 0.20)  # near-black
 
+const MULTICULTURAL_MINER_NAMES: Array[String] = [
+	"Hafir", "Kopacz", "Bergmann", "Madenci", "Khanak",
+	"Minero", "Minatore", "Kaevur", "Gornik", "Tunneller",
+	"Excavator", "Prospector", "DeepDriller", "OreSeeker", "BedrockBuster",
+	"GoldDigger", "DiamondHunter", "IronClad", "Pikeman", "CoreBreaker",
+	"RockCutter", "DirtGobbler", "StoneStriker", "QuarryMaster", "ShaftSinker",
+	"TunnelMole", "EarthBorer", "GroundCrusher", "GeoDriller", "CaveExplorer",
+	"VeinHunter", "DrillRig", "SeamSeeker", "ShovelKnight", "PickaxePete",
+	"CragCrusher", "LodeRunner", "MuckRaker", "SlagSifter", "NuggetNabor",
+	"ShatterDrill", "Subterranean", "Mineshaft", "Mineur", "Koupa",
+	"Minaio", "PitBoss", "ChiselMaster", "StrataSmasher", "GrottoGrinder"
+]
+
+
+static func generate_random_miner_name() -> String:
+	var base_name: String = MULTICULTURAL_MINER_NAMES[randi() % MULTICULTURAL_MINER_NAMES.size()]
+	var random_num: int = randi_range(1000, 9999)
+	return base_name + str(random_num)
+
 # Array of Arrays: [[left_rect, right_rect], ...]
 var _shards: Array[Array] = []
 var _bomb_rects: Array[ColorRect] = []
@@ -20,6 +39,8 @@ var _pulse_timer: float = 0.0
 var _current_active_color: Color = COLOR_FULL
 var _vignette: ColorRect = null
 var _last_biome_name: String = ""
+var _last_submitted_player_name: String = ""
+var _scroll_container: ScrollContainer = null
 
 @onready var _container: HBoxContainer = $BatteryContainer
 
@@ -319,7 +340,7 @@ func _show_game_over_overlay() -> void:
 
 	var name_input := LineEdit.new()
 	name_input.placeholder_text = "Enter Miner Name..."
-	name_input.text = "Anonymous Miner"
+	name_input.text = generate_random_miner_name()
 	name_input.custom_minimum_size = Vector2(180, 24)
 	name_input.add_theme_font_size_override("font_size", 11)
 	input_hbox.add_child(name_input)
@@ -329,6 +350,7 @@ func _show_game_over_overlay() -> void:
 	submit_btn.custom_minimum_size = Vector2(100, 24)
 	submit_btn.add_theme_font_size_override("font_size", 11)
 	input_hbox.add_child(submit_btn)
+	_wire_ui_sounds(submit_btn)
 
 	# Leaderboard Board Title
 	_board_title_lbl = Label.new()
@@ -339,19 +361,22 @@ func _show_game_over_overlay() -> void:
 	main_vbox.add_child(_board_title_lbl)
 
 	# High Scores Scroll / Container
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(300, 90)
-	main_vbox.add_child(scroll)
+	_scroll_container = ScrollContainer.new()
+	_scroll_container.custom_minimum_size = Vector2(300, 90)
+	main_vbox.add_child(_scroll_container)
 
 	_scores_vbox = VBoxContainer.new()
 	_scores_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_scores_vbox)
+	_scroll_container.add_child(_scores_vbox)
 
 	_refresh_leaderboard_display()
 
 	# Connect submit button
 	submit_btn.pressed.connect(func():
-		var player_name: String = name_input.text
+		var player_name: String = name_input.text.strip_edges()
+		if player_name.is_empty():
+			player_name = generate_random_miner_name()
+		_last_submitted_player_name = player_name
 		if Leaderboard:
 			Leaderboard.register_high_score(player_name, final_score, final_depth)
 		submit_btn.disabled = true
@@ -367,6 +392,7 @@ func _show_game_over_overlay() -> void:
 	restart_btn.custom_minimum_size = Vector2(140, 26)
 	restart_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	restart_btn.add_theme_font_size_override("font_size", 12)
+	_wire_ui_sounds(restart_btn)
 	restart_btn.pressed.connect(func():
 		get_tree().reload_current_scene()
 	)
@@ -426,25 +452,114 @@ func _on_online_scores_received(top_scores: Array[Dictionary], is_online: bool) 
 		_scores_vbox.add_child(empty_lbl)
 		return
 
-	for i in top_scores.size():
-		var entry: Dictionary = top_scores[i]
-		var entry_lbl := Label.new()
-		var rank_str: String = "#" + str(i + 1) + " "
-		var score_text: String = rank_str + str(entry.get("name", "Miner")) + " - " + str(entry.get("score", 0)) + " pts (" + str(entry.get("depth", 0)) + "m)"
-		entry_lbl.text = score_text
-		entry_lbl.add_theme_font_size_override("font_size", 10)
+	# Find index of current player's submitted score
+	var player_index: int = -1
+	if not _last_submitted_player_name.is_empty():
+		for i in top_scores.size():
+			if str(top_scores[i].get("name", "")) == _last_submitted_player_name:
+				player_index = i
+				break
 
-		# Gold for #1, Silver for #2, Bronze for #3
-		if i == 0:
-			entry_lbl.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
-		elif i == 1:
-			entry_lbl.add_theme_color_override("font_color", Color(0.75, 0.75, 0.75))
-		elif i == 2:
-			entry_lbl.add_theme_color_override("font_color", Color(0.8, 0.5, 0.2))
+	# Determine rendering indices:
+	# If player_index <= 9 or player_index == -1: render full list up to 10+
+	# If player_index > 9: render Top 3 + "..." + (player_index - 1, player_index, player_index + 1)
+	var indices_to_render: Array[int] = []
+	var show_ellipsis_before_context: bool = false
+
+	if player_index > 9:
+		indices_to_render.append(0)
+		indices_to_render.append(1)
+		indices_to_render.append(2)
+		show_ellipsis_before_context = true
+		
+		for idx in range(player_index - 1, min(player_index + 2, top_scores.size())):
+			if not indices_to_render.has(idx):
+				indices_to_render.append(idx)
+	else:
+		for i in top_scores.size():
+			indices_to_render.append(i)
+
+	var highlighted_panel: PanelContainer = null
+
+	for i in indices_to_render.size():
+		var idx: int = indices_to_render[i]
+		
+		if show_ellipsis_before_context and i == 3:
+			var ellipsis_lbl := Label.new()
+			ellipsis_lbl.text = "   . . .   . . .   . . ."
+			ellipsis_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			ellipsis_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+			ellipsis_lbl.add_theme_font_size_override("font_size", 9)
+			_scores_vbox.add_child(ellipsis_lbl)
+
+		var entry: Dictionary = top_scores[idx]
+		var is_player: bool = (idx == player_index) or (not _last_submitted_player_name.is_empty() and str(entry.get("name", "")) == _last_submitted_player_name)
+
+		if is_player:
+			var panel := PanelContainer.new()
+			var p_style := StyleBoxFlat.new()
+			p_style.bg_color = Color(0.0, 0.35, 0.45, 0.85) # Deep cyan background
+			p_style.border_width_left = 1
+			p_style.border_width_top = 1
+			p_style.border_width_right = 1
+			p_style.border_width_bottom = 1
+			p_style.border_color = Color(0.0, 1.0, 0.9) # Bright glowing cyan border
+			p_style.corner_radius_top_left = 4
+			p_style.corner_radius_top_right = 4
+			p_style.corner_radius_bottom_left = 4
+			p_style.corner_radius_bottom_right = 4
+			p_style.content_margin_left = 6
+			p_style.content_margin_top = 2
+			p_style.content_margin_right = 6
+			p_style.content_margin_bottom = 2
+			panel.add_theme_stylebox_override("panel", p_style)
+
+			var entry_lbl := Label.new()
+			var score_text: String = "👉 #" + str(idx + 1) + " " + str(entry.get("name", "Miner")) + " - " + str(entry.get("score", 0)) + " pts (" + str(entry.get("depth", 0)) + "m)  (YOU) 👈"
+			entry_lbl.text = score_text
+			entry_lbl.add_theme_font_size_override("font_size", 10)
+			entry_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.2)) # Bright Gold/Yellow
+			panel.add_child(entry_lbl)
+
+			_scores_vbox.add_child(panel)
+			highlighted_panel = panel
+
+			# Soft pulsing glow animation on player's box border
+			var pulse_tween := create_tween()
+			pulse_tween.set_loops(4)
+			pulse_tween.tween_property(panel, "modulate", Color(1.3, 1.3, 1.3), 0.3)
+			pulse_tween.tween_property(panel, "modulate", Color(1.0, 1.0, 1.0), 0.3)
 		else:
-			entry_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+			var entry_lbl := Label.new()
+			var rank_str: String = "#" + str(idx + 1) + " "
+			var score_text: String = rank_str + str(entry.get("name", "Miner")) + " - " + str(entry.get("score", 0)) + " pts (" + str(entry.get("depth", 0)) + "m)"
+			entry_lbl.text = score_text
+			entry_lbl.add_theme_font_size_override("font_size", 10)
 
-		_scores_vbox.add_child(entry_lbl)
+			# Gold for #1, Silver for #2, Bronze for #3
+			if idx == 0:
+				entry_lbl.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
+			elif idx == 1:
+				entry_lbl.add_theme_color_override("font_color", Color(0.75, 0.75, 0.75))
+			elif idx == 2:
+				entry_lbl.add_theme_color_override("font_color", Color(0.8, 0.5, 0.2))
+			else:
+				entry_lbl.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+
+			_scores_vbox.add_child(entry_lbl)
+
+	# Auto-scroll to center player entry inside ScrollContainer
+	if highlighted_panel and _scroll_container:
+		call_deferred("_scroll_to_highlighted_panel", highlighted_panel)
+
+
+func _scroll_to_highlighted_panel(panel: PanelContainer) -> void:
+	if not is_instance_valid(panel) or not is_instance_valid(_scroll_container):
+		return
+	var panel_y: float = panel.position.y
+	var scroll_target: int = max(0, int(panel_y - (_scroll_container.size.y * 0.5) + (panel.size.y * 0.5)))
+	var scroll_tween := create_tween()
+	scroll_tween.tween_property(_scroll_container, "scroll_vertical", scroll_target, 0.4).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 
 
 func _on_bombs_changed(current: int, _maximum: int) -> void:
@@ -486,4 +601,10 @@ func _on_combo_changed(combo: int) -> void:
 		tween.tween_property(_combo_label, "scale", Vector2.ONE, 0.15)
 	else:
 		_combo_label.text = ""
+
+func _wire_ui_sounds(button: Button) -> void:
+	if not button:
+		return
+	button.mouse_entered.connect(func(): if EventBus: EventBus.ui_button_hovered.emit())
+	button.pressed.connect(func(): if EventBus: EventBus.ui_button_clicked.emit())
 

@@ -15,8 +15,15 @@ run/main_scene="uid://m5ic6g7lgjvl"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
+[audio]
+
+buses/default_bus_layout="uid://2l8wopabb3nt"
+bus/default_bus_layout="res://default_bus_layout.tres"
+
 [autoload]
 
+EventBus="*res://scenes/MainLevel/EventBus.gd"
+SoundManager="*res://scenes/MainLevel/SoundManager.gd"
 Leaderboard="*res://scenes/MainLevel/Leaderboard.gd"
 SilentWolf="*uid://bnmwi5flambo6"
 

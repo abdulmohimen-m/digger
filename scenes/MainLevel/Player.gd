@@ -105,6 +105,7 @@ func _ready() -> void:
 	gold_changed.emit(gold_count)
 	diamond_changed.emit(diamond_count)
 	_update_depth_tracker()
+	_connect_to_event_bus()
 	
 	# Setup floating LOW BAT warning icon above vehicle
 	_low_bat_label = Label.new()
@@ -563,4 +564,21 @@ func _detonate_bomb() -> void:
 		_spend_battery(5.0)
 					
 	detonated_bomb.emit(bomb_pos)
+
+func _connect_to_event_bus() -> void:
+	if not EventBus:
+		return
+	dug_tile.connect(func(pos): EventBus.dug_tile.emit(pos, Color("8b5a2b")))
+	moved_freely.connect(func(pos): EventBus.moved_freely.emit(pos))
+	hit_wall.connect(func(pos): EventBus.hit_wall.emit(pos))
+	hit_rock.connect(func(pos): EventBus.hit_rock.emit(pos))
+	hit_mine.connect(func(pos): EventBus.hit_mine.emit(pos))
+	collected_battery.connect(func(pos): EventBus.collected_battery.emit(pos))
+	collected_gold.connect(func(pos): EventBus.collected_gold.emit(pos))
+	collected_diamond.connect(func(pos): EventBus.collected_diamond.emit(pos))
+	placed_bomb.connect(func(pos): EventBus.placed_bomb.emit(pos))
+	detonated_bomb.connect(func(pos): EventBus.detonated_bomb.emit(pos))
+	low_battery_warning.connect(func(is_low): EventBus.low_battery_warning.emit(is_low))
+	battery_depleted.connect(func(pos): EventBus.battery_depleted.emit(pos))
+	frenzy_level_changed.connect(func(level): EventBus.frenzy_tier_changed.emit(level))
 

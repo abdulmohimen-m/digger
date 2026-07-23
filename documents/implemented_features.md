@@ -24,7 +24,12 @@ This document logs all the features, logic, and polish implemented during this d
 ### 0.2 SilentWolf REST API Online Leaderboard & SKG Fallback
 - **Online Integration (`SilentWolf REST API`):** Asynchronously posts and fetches global scores using native Godot `HTTPRequest` nodes configured for game `digger` (no external plugin/addon required).
 - **Hybrid SKG Local Persistence (`user://local_leaderboard.cfg`):** Every score submission is written to local hardware *first* before making the API request. If network connection fails or server is offline, the game automatically displays local high scores tagged as `--- LOCAL SKG LEADERBOARD (OFFLINE) ---`.
-- **Run Score Calculation:** Combined Score metric: `(Max Depth * 10) + Total Wealth Collected`.
+- **Top 50 Score Capacity:** Extended leaderboard tracking capacity from 10 to 50 entries across online SilentWolf and local SKG persistence.
+- **Player Rank Highlighting & Glowing Box:** Identifies the player's submitted score row and wraps it in a distinct glowing cyan panel box (`#005973` bg with `#00e5ff` border), gold text, and a `👉 #Rank Name - Score (YOU) 👈` indicator tag with pulsing border animations.
+- **Contextual Out-Of-Top-10 Ranking:** If the player's score ranks outside the Top 10 (e.g., rank #24 out of 50), the table renders Top 3 scores $\rightarrow$ `...` divider $\rightarrow$ player's rank context (rank - 1, player rank [YOU], rank + 1) so their exact standing is always visible.
+- **Smooth Auto-Scroll Centering:** Automatically animates `ScrollContainer.scroll_vertical` with a spring tween to center on the player's rank panel box when scores load.
+- **Multicultural Default Miner Names:** Pre-populates the score submission input with 50 multicultural digging/mining titles (e.g., `Hafir`, `Kopacz`, `Bergmann`, `Madenci`, `Khanak`, `Gornik`, `Minero`, `Tunneller`) combined with a random 4-digit number between `1000` and `9999` (e.g. `Kopacz4819`, `Madenci8291`, `Hafir1042`).
+- **Run Score Calculation:** Combined Score metric: `(Max Depth * 10) + (Gold * 100) + (Diamonds * 300)`.
 - **Game Over Overlay Modal:** Automatically pops up on `CanvasLayer` 1.2s after battery depletion with pop-in animation, displaying stats summary, name LineEdit input, "Submit Score" button, dynamic top 10 leaderboard table with online/offline indicator, and a "Play Again" restart button.
 
 ### 1. Grid-Locked Movement & Digging

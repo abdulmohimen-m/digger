@@ -107,14 +107,8 @@ func _spawn_vfx(scene: PackedScene, pos: Vector2, fallback_color: Color) -> void
 		timer.timeout.connect(particles.queue_free)
 
 func _play_sfx(stream: AudioStream, fallback_name: String) -> void:
-	if stream:
-		var audio_player = AudioStreamPlayer.new()
-		audio_player.stream = stream
-		audio_player.autoplay = true
-		add_child(audio_player)
-		audio_player.finished.connect(audio_player.queue_free)
-	else:
-		print("SFX Played: ", fallback_name)
+	if stream and SoundManager:
+		SoundManager.play_sfx(stream)
 
 
 func _on_player_placed_bomb(pos: Vector2) -> void:
