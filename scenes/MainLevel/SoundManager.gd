@@ -187,7 +187,7 @@ func play_sfx_key(key: String, pitch_jitter: float = 0.08, bus_override: StringN
 		var pitch := 1.0 + randf_range(-pitch_jitter, pitch_jitter)
 		play_sfx(stream, pitch, bus_override)
 
-func play_random_dig_sfx() -> void:
+func play_random_dig_sfx(bus_override: StringName = &"SFX") -> void:
 	if _dig_streams.size() > 0:
 		var index := randi() % _dig_streams.size()
 		if _dig_streams.size() > 1 and index == _last_dig_index:
@@ -195,9 +195,9 @@ func play_random_dig_sfx() -> void:
 		_last_dig_index = index
 		var stream = _dig_streams[index]
 		var pitch = 1.0 + randf_range(-0.05, 0.05)
-		play_sfx(stream, pitch)
+		play_sfx(stream, pitch, bus_override)
 	else:
-		play_sfx_key("dig", 0.05)
+		play_sfx_key("dig", 0.05, bus_override)
 
 func play_random_rock_dig_sfx() -> void:
 	if _rock_dig_streams.size() > 0:
@@ -334,7 +334,7 @@ func _on_frenzy_tier_changed(tier: int) -> void:
 				play_sfx(stream, pitch)
 
 func _on_ui_button_clicked() -> void:
-	play_sfx_key("ui_click", 0.02, &"UI")
+	play_random_dig_sfx(&"UI")
 
 func _on_ui_button_hovered() -> void:
 	play_sfx_key("ui_hover", 0.02, &"UI")
