@@ -25,7 +25,7 @@ tile_set = ExtResource("1_li581")
 script = ExtResource("2_diggable")
 
 [node name="Player" type="CharacterBody2D" parent="." unique_id=892374651]
-position = Vector2(80, 48)
+position = Vector2(80, 49)
 script = ExtResource("3_player")
 
 [node name="Sprite2D" type="Sprite2D" parent="Player" unique_id=341892750]
