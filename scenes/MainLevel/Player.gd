@@ -195,6 +195,7 @@ func _try_move(dir: Vector2i) -> void:
 			_is_moving = true
 			_is_digging = true
 			_increment_combo()
+			collected_gold.emit(target_pos)
 			_play_impact_lunge(dir)
 			return
 		elif atlas == TILE_GOLD:

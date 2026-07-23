@@ -21,6 +21,8 @@ var _battery_charge_stream: AudioStream
 var _frenzy_transition_stream: AudioStream
 var _metal_hit_stream: AudioStream
 var _game_over_stream: AudioStream
+var _explosion_stream: AudioStream
+var _bomb_drop_stream: AudioStream
 
 # Audio Players Pool
 var _sfx_players: Array[AudioStreamPlayer] = []
@@ -85,6 +87,10 @@ func _load_audio_assets() -> void:
 		_metal_hit_stream = load("res://assets/sfx/MetalHit.ogg")
 	if ResourceLoader.exists("res://assets/sfx/GameOver.ogg") or FileAccess.file_exists("res://assets/sfx/GameOver.ogg"):
 		_game_over_stream = load("res://assets/sfx/GameOver.ogg")
+	if ResourceLoader.exists("res://assets/sfx/Explosion.ogg") or FileAccess.file_exists("res://assets/sfx/Explosion.ogg"):
+		_explosion_stream = load("res://assets/sfx/Explosion.ogg")
+	if ResourceLoader.exists("res://assets/sfx/BombDrop.ogg") or FileAccess.file_exists("res://assets/sfx/BombDrop.ogg"):
+		_bomb_drop_stream = load("res://assets/sfx/BombDrop.ogg")
 
 func _generate_procedural_fallbacks() -> void:
 	# Generates clean retro arcade WAV samples in memory for fallback SFX
@@ -215,7 +221,11 @@ func _on_hit_rock(_pos: Vector2) -> void:
 	play_random_rock_dig_sfx()
 
 func _on_hit_mine(_pos: Vector2) -> void:
-	play_sfx_key("hit_mine", 0.1)
+	if _explosion_stream:
+		var pitch := 1.1 + randf_range(-0.05, 0.05)
+		play_sfx(_explosion_stream, pitch)
+	else:
+		play_sfx_key("hit_mine", 0.1)
 
 func _on_collected_battery(_pos: Vector2) -> void:
 	play_random_dig_sfx()
@@ -242,10 +252,18 @@ func _on_collected_diamond(_pos: Vector2) -> void:
 		play_sfx_key("diamond", 0.04)
 
 func _on_placed_bomb(_pos: Vector2) -> void:
-	play_sfx_key("placed_bomb", 0.05)
+	if _bomb_drop_stream:
+		var pitch := 1.0 + randf_range(-0.04, 0.04)
+		play_sfx(_bomb_drop_stream, pitch)
+	else:
+		play_sfx_key("placed_bomb", 0.05)
 
 func _on_detonated_bomb(_pos: Vector2) -> void:
-	play_sfx_key("detonated_bomb", 0.08)
+	if _explosion_stream:
+		var pitch := 0.9 + randf_range(-0.05, 0.05)
+		play_sfx(_explosion_stream, pitch)
+	else:
+		play_sfx_key("detonated_bomb", 0.08)
 
 func _on_low_battery_warning(is_low: bool) -> void:
 	_set_music_lowpass_filter(is_low)
