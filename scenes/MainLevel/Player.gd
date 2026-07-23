@@ -13,6 +13,7 @@ signal combo_changed(combo: int)
 signal frenzy_level_changed(level: int)
 signal low_battery_warning(is_low: bool)
 signal battery_depleted(pos: Vector2)
+signal depth_changed(current_depth: int, biome_name: String)
 
 const TILE_SIZE: int = 16
 const MAX_BATTERY: float = 10.0
@@ -51,11 +52,30 @@ var _is_low_battery: bool = false
 var _is_depleted: bool = false
 var _low_bat_label: Label = null
 var frenzy_level: int = 0
+var current_depth: int = -1
 var is_frenzy: bool:
 	get: return frenzy_level >= 1
 
 @onready var _dirt_layer: TileMapLayer = $"../Tilemaps/DirtLayer"
 @onready var _sprite: Sprite2D = $Sprite2D
+
+
+func get_biome_name(depth: int) -> String:
+	if depth < 4:
+		return "Surface"
+	elif depth <= 150:
+		return "Layer 1: Normal Soil"
+	elif depth <= 350:
+		return "Layer 2: Rocky Soil"
+	else:
+		return "Layer 3: Ancient Mines"
+
+
+func _update_depth_tracker() -> void:
+	var new_depth: int = max(0, int(floor(_target_position.y / float(TILE_SIZE))))
+	if new_depth != current_depth:
+		current_depth = new_depth
+		depth_changed.emit(current_depth, get_biome_name(current_depth))
 
 
 func _ready() -> void:
@@ -65,6 +85,7 @@ func _ready() -> void:
 	_target_position = global_position
 	battery_changed.emit(battery, MAX_BATTERY)
 	bombs_changed.emit(bombs, MAX_BOMBS)
+	_update_depth_tracker()
 	
 	# Setup floating LOW BAT warning icon above vehicle
 	_low_bat_label = Label.new()
@@ -98,6 +119,7 @@ func _physics_process(delta: float) -> void:
 			_is_moving = false
 			_is_digging = false
 			_sprite.position = Vector2.ZERO
+			_update_depth_tracker()
 		return
 
 	# Frozen if battery is out and we are not currently moving

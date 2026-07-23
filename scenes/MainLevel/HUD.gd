@@ -11,11 +11,13 @@ const COLOR_EMPTY: Color = Color(0.18, 0.18, 0.20)  # near-black
 var _shards: Array[Array] = []
 var _bomb_rects: Array[ColorRect] = []
 var _combo_label: Label
+var _layer_label: Label
 var _bomb_container: HBoxContainer
 var _is_low_battery: bool = false
 var _pulse_timer: float = 0.0
 var _current_active_color: Color = COLOR_FULL
 var _vignette: ColorRect = null
+var _last_biome_name: String = ""
 
 @onready var _container: HBoxContainer = $BatteryContainer
 
@@ -62,9 +64,6 @@ func _ready() -> void:
 		_bomb_rects.append(rect)
 	add_child(_bomb_container)
 
-	# Wait one frame so Player._ready() has had time to run and join its group
-	call_deferred("_connect_to_player")
-
 	# Initialize combo label dynamically
 	_combo_label = Label.new()
 	_combo_label.position = Vector2(10, 50)
@@ -72,6 +71,23 @@ func _ready() -> void:
 	_combo_label.add_theme_color_override("font_color", Color("ffd700"))
 	_combo_label.add_theme_font_size_override("font_size", 14)
 	add_child(_combo_label)
+
+	# Initialize layer & depth tracker label (top-right anchored)
+	_layer_label = Label.new()
+	_layer_label.anchors_preset = Control.PRESET_TOP_RIGHT
+	_layer_label.anchor_left = 1.0
+	_layer_label.anchor_right = 1.0
+	_layer_label.offset_left = -250
+	_layer_label.offset_top = 10
+	_layer_label.offset_right = -10
+	_layer_label.offset_bottom = 35
+	_layer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_layer_label.add_theme_color_override("font_color", Color(0.92, 0.94, 1.0))
+	_layer_label.add_theme_font_size_override("font_size", 12)
+	add_child(_layer_label)
+
+	# Wait one frame so Player._ready() has had time to run and join its group
+	call_deferred("_connect_to_player")
 
 
 func _process(delta: float) -> void:
@@ -95,10 +111,28 @@ func _connect_to_player() -> void:
 		player.bombs_changed.connect(_on_bombs_changed)
 		player.low_battery_warning.connect(_on_low_battery_warning)
 		player.battery_depleted.connect(_on_battery_depleted)
-		# Sync immediately with current battery state
+		if player.has_signal("depth_changed"):
+			player.depth_changed.connect(_on_depth_changed)
+		# Sync immediately with current player state
 		player.battery_changed.emit(player.battery, player.MAX_BATTERY)
 		player.bombs_changed.emit(player.bombs, player.MAX_BOMBS)
 		_on_combo_changed(player.combo_count)
+		if "current_depth" in player and player.has_method("get_biome_name"):
+			_on_depth_changed(player.current_depth, player.get_biome_name(player.current_depth))
+
+
+func _on_depth_changed(depth: int, biome_name: String) -> void:
+	if not _layer_label:
+		return
+	_layer_label.text = "📍 DEPTH: " + str(depth) + "m | " + biome_name
+	
+	if biome_name != _last_biome_name:
+		_last_biome_name = biome_name
+		# Visual scale punch transition on entering a new biome layer
+		_layer_label.pivot_offset = Vector2(_layer_label.size.x, _layer_label.size.y * 0.5)
+		_layer_label.scale = Vector2(1.35, 1.35)
+		var tween := create_tween()
+		tween.tween_property(_layer_label, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 
 
 var _half_shards_filled: int = 20

@@ -16,6 +16,11 @@ This document logs all the features, logic, and polish implemented during this d
 - **Guaranteed Battery Spawning:** Enforces a safety rule spawning at least 1 battery canister every 8-12 depth rows to eliminate unwinnable drought bottlenecks.
 - **Seed Configuration:** Exposes `@export var seed_value: int = 0` (`0` = randomized on boot; non-zero = reproducible seed).
 
+### 0.1 Depth & Layer Tracker UI
+- **Real-Time Depth Signal:** Emits `depth_changed(current_depth: int, biome_name: String)` from `Player.gd` as the vehicle drills vertically into new grid rows.
+- **HUD Biome Display:** Top-right anchored `_layer_label` displays current depth in meters and active biome name (e.g. `📍 DEPTH: 42m | Layer 1: Normal Soil`).
+- **Biome Transition Punch:** Plays a spring scale-punch animation when transitioning into a new biome layer (Surface -> Layer 1 -> Layer 2 -> Layer 3).
+
 ### 1. Grid-Locked Movement & Digging
 - **Grid Size & Snap:** All coordinates snaped to a 16px grid.
 - **Directional Digging:**
