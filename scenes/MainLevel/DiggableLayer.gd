@@ -18,6 +18,7 @@ const TILE_BATTERY = Vector2i(7, 0)
 const TILE_PLAIN = Vector2i(1, 1)
 const TILE_DIAMOND = Vector2i(3, 1)
 const TILE_GOLD = Vector2i(4, 1)
+const TILE_MAGMA = Vector2i(7, 4)
 const TILE_LEFT_BORDER = Vector2i(2, 1)
 const TILE_RIGHT_BORDER = Vector2i(0, 1)
 const OUTER_MARGIN: int = 10
@@ -261,16 +262,83 @@ func generate_map() -> void:
 				set_cell(Vector2i(x, y), SOURCE_ID, TILE_PLAIN)
 			continue
 
+		# Oasis Vault Generation Check (Transitions at Depths 73, 148, 223, 298, 373)
+		var oasis_number = -1
+		if y >= 73 and y <= 76: oasis_number = 1
+		elif y >= 148 and y <= 151: oasis_number = 2
+		elif y >= 223 and y <= 226: oasis_number = 3
+		elif y >= 298 and y <= 301: oasis_number = 4
+		elif y >= 373 and y <= 376: oasis_number = 5
+
+		if oasis_number != -1:
+			var row_in_oasis = (y - 73) % 75
+			
+			if row_in_oasis == 0 or row_in_oasis == 3: # Ceiling or Floor
+				var gap1 = rng.randi_range(1, map_width)
+				var gap2 = rng.randi_range(1, map_width)
+				for x in range(1, map_width + 1):
+					if x == gap1 or x == gap2:
+						set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
+					else:
+						set_cell(Vector2i(x, y), SOURCE_ID, TILE_UNDIGGABLE)
+			
+			elif row_in_oasis == 1: # Supplies Row
+				var num_batteries = ceil(oasis_number / 2.0)
+				var num_bombs = ceil(oasis_number / 2.0)
+				var items_to_place = []
+				for i in range(num_batteries): items_to_place.append(TILE_BATTERY)
+				for i in range(num_bombs): items_to_place.append(TILE_BOMB)
+				
+				while items_to_place.size() < map_width:
+					items_to_place.append(TILE_PLAIN)
+				
+				# Basic shuffle
+				for i in range(items_to_place.size() - 1, 0, -1):
+					var j = rng.randi_range(0, i)
+					var temp = items_to_place[i]
+					items_to_place[i] = items_to_place[j]
+					items_to_place[j] = temp
+				
+				for x in range(1, map_width + 1):
+					set_cell(Vector2i(x, y), SOURCE_ID, items_to_place[x - 1])
+			
+			elif row_in_oasis == 2: # Treasure Row
+				var vein_tile = TILE_GOLD if oasis_number <= 2 else TILE_DIAMOND
+				var length = 3 + oasis_number
+				if length > map_width - 2: length = map_width - 2
+				var start_x = rng.randi_range(1, map_width - length + 1)
+				for x in range(1, map_width + 1):
+					if x >= start_x and x < start_x + length:
+						set_cell(Vector2i(x, y), SOURCE_ID, vein_tile)
+					else:
+						set_cell(Vector2i(x, y), SOURCE_ID, TILE_PLAIN)
+			continue # End of Oasis row generation
+
+		# Determine Current Biome
+		var current_biome = 1
+		if y > 376: current_biome = 6
+		elif y > 301: current_biome = 5
+		elif y > 226: current_biome = 4
+		elif y > 151: current_biome = 3
+		elif y > 76: current_biome = 2
+
+		# Bedrock Strata Logic
 		rows_since_stratum += 1
 		var is_stratum_row: bool = false
 		var gap1: int = -1
 		var gap2: int = -1
 		
-		# Prevent strata in the first 20 rows so players can learn
-		if y > 20 and rows_since_stratum >= next_stratum_row:
+		var stratum_min = 15
+		var stratum_max = 25
+		if current_biome == 6:
+			stratum_min = 8
+			stratum_max = 12
+			
+		# Allow strata only if Biome >= 3
+		if current_biome >= 3 and rows_since_stratum >= next_stratum_row:
 			is_stratum_row = true
 			rows_since_stratum = 0
-			next_stratum_row = rng.randi_range(15, 25)
+			next_stratum_row = rng.randi_range(stratum_min, stratum_max)
 			
 			gap1 = rng.randi_range(1, map_width)
 			if rng.randf() < 0.4: # 40% chance for a second gap
@@ -300,9 +368,9 @@ func generate_map() -> void:
 			vein_start = rng.randi_range(1, map_width - length + 1)
 			vein_end = vein_start + length - 1
 			
-			if y <= 150:
+			if current_biome <= 2:
 				vein_tile = TILE_GOLD if rng.randf() < 0.90 else TILE_DIAMOND
-			elif y <= 350:
+			elif current_biome <= 4:
 				vein_tile = TILE_GOLD if rng.randf() < 0.65 else TILE_DIAMOND
 			else:
 				vein_tile = TILE_GOLD if rng.randf() < 0.45 else TILE_DIAMOND
@@ -336,19 +404,27 @@ func generate_map() -> void:
 			var chance_rock = 0.0
 			var chance_gold = 0.0
 			var chance_diamond = 0.0
+			var chance_magma = 0.0
 
-			# --- BIOME 1: Normal Soil (Depth 4 to 150) ---
-			if y <= 150:
-				chance_mine = 0.04
-				chance_undiggable = 0.03 if not is_pre_stratum_row else 0.0
-				chance_battery = 0.05
-				chance_bomb = 0.05
-				chance_rock = 0.05
+			if current_biome == 1:
+				# Biome 1: Surface
+				chance_battery = 0.06
 				chance_gold = 0.01
+			elif current_biome == 2:
+				# Biome 2: Rocky Soil
+				chance_rock = 0.20
+				chance_battery = 0.05
+				chance_gold = 0.02
+			elif current_biome == 3:
+				# Biome 3: The Blockade
+				chance_undiggable = 0.05 if not is_pre_stratum_row else 0.0
+				chance_rock = 0.25
+				chance_battery = 0.05
+				chance_bomb = 0.06
+				chance_gold = 0.02
 				chance_diamond = 0.005
-
-			# --- BIOME 2: Rocky Soil (Depth 151 to 350) ---
-			elif y <= 350:
+			elif current_biome == 4:
+				# Biome 4: Ancient Mines
 				chance_mine = 0.06
 				chance_undiggable = 0.08 if not is_pre_stratum_row else 0.0
 				chance_rock = 0.25
@@ -356,10 +432,20 @@ func generate_map() -> void:
 				chance_bomb = 0.06
 				chance_gold = 0.02
 				chance_diamond = 0.01
-
-			# --- BIOME 3: Ancient Mines (Depth 351 to 498) ---
-			else:
-				chance_mine = 0.10
+			elif current_biome == 5:
+				# Biome 5: Volcanic Layer
+				chance_magma = 0.08
+				chance_mine = 0.08
+				chance_undiggable = 0.10 if not is_pre_stratum_row else 0.0
+				chance_rock = 0.25
+				chance_battery = 0.05
+				chance_bomb = 0.05
+				chance_gold = 0.02
+				chance_diamond = 0.02
+			elif current_biome == 6:
+				# Biome 6: The Abyss
+				chance_magma = 0.12
+				chance_mine = 0.12
 				chance_undiggable = 0.15 if not is_pre_stratum_row else 0.0
 				chance_rock = 0.25
 				chance_battery = 0.05
@@ -374,6 +460,7 @@ func generate_map() -> void:
 			var c5 = c4 + chance_rock
 			var c6 = c5 + chance_gold
 			var c7 = c6 + chance_diamond
+			var c8 = c7 + chance_magma
 
 			if roll < c1:
 				set_cell(Vector2i(x, y), SOURCE_ID, TILE_MINE)
@@ -389,5 +476,7 @@ func generate_map() -> void:
 				set_cell(Vector2i(x, y), SOURCE_ID, TILE_GOLD)
 			elif roll < c7:
 				set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIAMOND)
+			elif roll < c8:
+				set_cell(Vector2i(x, y), SOURCE_ID, TILE_MAGMA)
 			else:
 				set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)

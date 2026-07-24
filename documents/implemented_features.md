@@ -9,12 +9,16 @@ This document logs all the features, logic, and polish implemented during this d
 ### 0. Startup Procedural Map Generation
 - **Level Dimensions:** 10 playable columns (columns 1 to 10) x 500 rows deep, framed by indestructible side border walls (`col 0` and `col 11`) and a metallic floor (`row 499`).
 - **Surface Onboarding Zone:** Rows 0 to 3 are cleared of tiles to guarantee safe vehicle spawning and controls familiarization.
-- **3-Biome Progression:**
-  - **Biome 1 (Normal Soil - Depth 4 to 150):** Soft Dirt base with 3% Undiggable, 5% Rock, 5% Battery, 5% Bomb, 4% Mine, and 1.5% scattered gems.
-  - **Biome 2 (Rocky Layer - Depth 151 to 350):** Soft Dirt base with 8% Undiggable, 25% 3-Hit Rock, 5% Battery, 6% Bomb, 6% Mine, and 3% scattered gems.
-  - **Biome 3 (Ancient Mines - Depth 351 to 498):** Soft Dirt base with 15% Undiggable, 25% Rock, 5% Battery, 5% Bomb, 10% Mine, and 5% scattered gems.
-- **Bedrock Strata System (Forced Pathing):** Generates horizontal solid floors of `TILE_UNDIGGABLE` metal every 15-25 depth rows (starting past depth 20) with 1 or 2 narrow gaps (`TILE_DIRT`). Forces players to move horizontally to locate openings, breaking predictable vertical rushing. Includes pre-stratum row safety (zero undiggables on row above) and automatically reroutes forced battery spawns into stratum gaps.
-- **Procedural Horizontal Vein System:** 15% of all rows generate contiguous 3-to-5 tile wide horizontal resource veins (`TILE_GOLD` and `TILE_DIAMOND`), concentrating collectible wealth into horizontal clusters to heavily incentivize side exploration. Biome depth scales diamond vein ratio (10% in Biome 1 $\rightarrow$ 35% in Biome 2 $\rightarrow$ 55% in Biome 3).
+- **6-Biome Progression (Paced every 75 rows):**
+  - **Biome 1 (Surface - Depth 4 to 72):** Ultra-safe zone. Dirt, Gold, Batteries. No hazards.
+  - **Biome 2 (Rocky Soil - Depth 77 to 147):** Introduces Rocks (gravity hazard).
+  - **Biome 3 (The Blockade - Depth 152 to 222):** Introduces Bombs, Undiggable blocks, Bedrock Strata, and Diamond Veins.
+  - **Biome 4 (Ancient Mines - Depth 227 to 297):** Introduces explosive Mines.
+  - **Biome 5 (Volcanic Layer - Depth 302 to 372):** Introduces Magma tiles (costs 2.5 battery to dig, immense friction).
+  - **Biome 6 (The Abyss - Depth 377 to 498):** Extreme density of hazards, Magma, and increased Bedrock Strata frequency.
+- **Oasis Vaults (Tension Relief):** At every biome transition (rows 73-76, 148-151, etc.), a 4-row safe room is generated. It is physically boxed in by Bedrock Strata floors and ceilings with 2 gaps. Inside, guaranteed Bombs, Batteries, and a massive Treasure Vein spawn, scaling in quantity and quality with depth.
+- **Bedrock Strata System (Forced Pathing):** Generates horizontal solid floors of `TILE_UNDIGGABLE` metal every 15-25 depth rows (every 8-12 in Biome 6) with 1 or 2 narrow gaps (`TILE_DIRT`). Forces players to move horizontally to locate openings.
+- **Procedural Horizontal Vein System:** 15% of all rows generate contiguous 3-to-5 tile wide horizontal resource veins (`TILE_GOLD` and `TILE_DIAMOND`). Scattered gems are reduced to 1-3% to incentivize hunting veins.
 - **Guaranteed Battery Spawning:** Enforces a safety rule spawning at least 1 battery canister every 8-12 depth rows to eliminate unwinnable drought bottlenecks.
 - **Seed Configuration:** Exposes `@export var seed_value: int = 0` (`0` = randomized on boot; non-zero = reproducible seed).
 

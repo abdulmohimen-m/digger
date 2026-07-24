@@ -41,6 +41,7 @@ const TILE_PLAIN: Vector2i = Vector2i(1, 1)
 const TILE_DIAMOND: Vector2i = Vector2i(3, 1)
 const TILE_GOLD: Vector2i = Vector2i(4, 1)
 const TILE_BOMB_ONLY: Vector2i = Vector2i(5, 1)
+const TILE_MAGMA: Vector2i = Vector2i(7, 4)
 const SOURCE_ID: int = 0
 const BATTERY_RECHARGE_AMOUNT: float = 3.0
 const MINE_BATTERY_DAMAGE: float = 4.0
@@ -245,6 +246,17 @@ func _try_move(dir: Vector2i) -> void:
 				hit_mine.emit(target_pos)
 				_current_move_speed = MOVE_SPEED_DIRT
 				_is_digging = true
+			_target_position = target_pos
+			_is_moving = true
+			_play_impact_lunge(dir)
+			return
+		elif atlas == TILE_MAGMA:
+			_clear_tile(target_cell)
+			_spend_battery(2.5)
+			_reset_combo()
+			dug_tile.emit(target_pos)
+			_current_move_speed = MOVE_SPEED_DIRT
+			_is_digging = true
 			_target_position = target_pos
 			_is_moving = true
 			_play_impact_lunge(dir)
