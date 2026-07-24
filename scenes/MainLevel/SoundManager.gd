@@ -307,7 +307,10 @@ func _on_vehicle_movement_updated(is_moving: bool, current_speed: float) -> void
 	
 	if is_moving:
 		_is_drill_loop_active = true
-		var target_pitch := remap(clamp(current_speed, 53.0, 160.0), 53.0, 160.0, 1.0, 1.6)
+		# Plain tile & slow dirt digging use 1.6 pitch. Frenzy speeds scale higher up to 2.4
+		var target_pitch: float = 1.6
+		if current_speed > 53.0 and current_speed < 160.0:
+			target_pitch = remap(current_speed, 53.0, 150.0, 1.8, 2.4)
 		_drill_loop_tween.parallel().tween_property(_drill_loop_player, "pitch_scale", target_pitch, 0.08)
 		
 		if not _drill_loop_player.playing:

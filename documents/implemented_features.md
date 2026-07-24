@@ -54,8 +54,9 @@ This document logs all the features, logic, and polish implemented during this d
   - **🔥 Synchronous Fire Pillar Step Wave:** **Horizontal Fire Pillars (`7,2`)** and **Vertical Fire Pillars (`7,3`)** pop up in sequence ring-by-ring with 1.35x scale punch & 0.25s fade as the wave front propagates.
   - Synchronously clears soft soil, rock blocks, metal blocks, and mine hazards while stopping at indestructible outer map borders.
   - Instantly shatters falling/wobbling rocks caught in the blast path.
-- **⚡ Cascading Chain Reactions:** Striking a terrain `TILE_BOMB` or another active bomb triggers an **instant secondary cross-explosion**, creating chain reactions down tunnels.
-- **Auto-Collection:** Any Gold and Diamond ores caught in the 4-way cross blast lines are automatically harvested into inventory.
+- **🔊 Dynamic Motor Drill Pitch Scaling:**
+  - **Slow Dirt Digging & Plain Tile Movement:** Plays at **1.60x pitch** for consistent motor feedback.
+  - **Frenzy Super-Drilling Speeds:** Scales higher dynamically between **1.80x and 2.40x pitch** as digging speed ramps up during high combo combos.
 - **Self-Damage Penalty:** Standing in any cell of the cross-blast wave deals a **5.0 battery damage penalty**.
 
 ### 5. Undiggable Tiles & Wall Boundaries System
