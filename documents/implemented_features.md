@@ -54,12 +54,18 @@ This document logs all the features, logic, and polish implemented during this d
   - **Camera Noise Shake:** Triggers an $8.0\text{px}$ camera noise shake and plays a power-down pitch-drop sound.
   - **Arcade Banner:** Displays a bold `⚠️ BATTERY EXHAUSTED! ⚠️` HUD banner with scale-punch animation and red/yellow warning flashes.
 
-### 4. Bomb & Pickup System
-- **Bomb Pickups:** Bomb canister tiles (sprite coordinates `(6, 0)`) spawned in the grid layout. Collecting one restores **1 bomb** (capped at 3).
-- **On-The-Move Placement:** Pressing `ui_accept` (Space) consumes **3.0 battery** and **1 bomb** to plant an explosive on the current grid tile center (`snapped(16, 16) + (8, 8)`) **without stopping vehicle movement**.
-- **Fuse Timer:** The bomb ticks down on a **2.0-second fuse** while flashing red/white with a bouncy drop pop.
-- **3x3 Blast Radius:** Obliterates all breakable tiles and items in a 3x3 area around the bomb's origin. Indestructible side walls are immune.
-- **Blast Penalty:** Standing inside the 3x3 blast area when it detonates deals a **5.0 battery damage penalty** to the player.
+### 4. 💣 Bomb & Remote Detonation System
+- **Bomb Pickups:** Bomb canister tiles (`6, 0`) spawned in the grid layout restore **1 bomb** when collected (capped at 3).
+- **On-The-Move Placement:** Pressing `ui_accept` (Space) when no bomb is active consumes **3.0 battery** and **1 bomb** to plant an explosive on the current grid cell.
+- **⚡ Remote Detonation Controls:** Pressing `ui_accept` (Space) while a bomb is ticking on the map **instantly detonates all active bombs** remotely at zero battery cost!
+- **💥 4-Way Cross-Blast Wave (+ Pattern):**
+  - **⚡ Step-by-Step Shockwave Propagation (0.04s per Ring):** Blast waves expand outward ring by ring (Center $\rightarrow$ Ring 1 $\rightarrow \dots \rightarrow$ Ring 6) over ~0.24 seconds total.
+  - **🔥 Synchronous Fire Pillar Step Wave:** **Horizontal Fire Pillars (`7,2`)** and **Vertical Fire Pillars (`7,3`)** pop up in sequence ring-by-ring with 1.35x scale punch & 0.25s fade as the wave front propagates.
+  - Synchronously clears soft soil, rock blocks, metal blocks, and mine hazards while stopping at indestructible outer map borders.
+  - Instantly shatters falling/wobbling rocks caught in the blast path.
+- **⚡ Cascading Chain Reactions:** Striking a terrain `TILE_BOMB` or another active bomb triggers an **instant secondary cross-explosion**, creating chain reactions down tunnels.
+- **Auto-Collection:** Any Gold and Diamond ores caught in the 4-way cross blast lines are automatically harvested into inventory.
+- **Self-Damage Penalty:** Standing in any cell of the cross-blast wave deals a **5.0 battery damage penalty**.
 
 ### 5. Undiggable Tiles & Wall Boundaries System
 - **Hard Obstacles:** Undiggable metal tiles (sprite coordinates `(4, 0)`), perimeter walls `(0, 0)`, and map boundaries block player movement.

@@ -13,8 +13,19 @@ extends Node2D
 @export var battery_sfx: AudioStream
 
 var _camera: Camera2D
+var _tex_fire_h: AtlasTexture
+var _tex_fire_v: AtlasTexture
 
 func _ready() -> void:
+	var tile_sheet: Texture2D = preload("res://assets/GameSpecificTiles.png")
+	_tex_fire_h = AtlasTexture.new()
+	_tex_fire_h.atlas = tile_sheet
+	_tex_fire_h.region = Rect2(119, 34, 16, 16) # Tile (7, 2) Horizontal Fire Pillar
+
+	_tex_fire_v = AtlasTexture.new()
+	_tex_fire_v.atlas = tile_sheet
+	_tex_fire_v.region = Rect2(119, 51, 16, 16) # Tile (7, 3) Vertical Fire Pillar
+
 	# Find the player in the scene
 	var player = get_tree().get_first_node_in_group("player")
 	if player:
@@ -40,6 +51,8 @@ func _ready() -> void:
 			dirt_layer.rock_wobbling.connect(_on_rock_wobbling)
 		if dirt_layer.has_signal("rock_shattered"):
 			dirt_layer.rock_shattered.connect(_on_rock_shattered)
+		if dirt_layer.has_signal("cross_blast_step"):
+			dirt_layer.cross_blast_step.connect(_on_cross_blast_step)
 
 func _on_rock_wobbling(pos: Vector2) -> void:
 	_spawn_vfx(null, pos, Color("a8a8a8"))
@@ -60,6 +73,40 @@ func _on_rock_crushed_player(pos: Vector2) -> void:
 		SoundManager.play_random_rock_dig_sfx()
 	if _camera and _camera.has_method("shake"):
 		_camera.shake(10.0)
+
+
+func _on_cross_blast_step(origin_cell: Vector2i, h_step_cells: Array[Vector2i], v_step_cells: Array[Vector2i]) -> void:
+	var dirt_layer = get_parent().get_node_or_null("Tilemaps/DirtLayer")
+	if not dirt_layer:
+		return
+
+	if _camera and _camera.has_method("shake"):
+		_camera.shake(4.0)
+
+	var spawn_fire_tile = func(cell: Vector2i, texture: AtlasTexture):
+		var sprite := Sprite2D.new()
+		sprite.texture = texture
+		sprite.global_position = dirt_layer.to_global(dirt_layer.map_to_local(cell))
+		sprite.z_index = 6
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		add_child(sprite)
+
+		sprite.scale = Vector2(0.2, 0.2)
+		var tween := sprite.create_tween()
+		tween.parallel().tween_property(sprite, "scale", Vector2(1.35, 1.35), 0.07).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(sprite, "modulate", Color(1.8, 1.3, 0.8, 1.0), 0.07)
+
+		tween.tween_property(sprite, "scale", Vector2.ONE, 0.08)
+		tween.parallel().tween_property(sprite, "modulate", Color(1.0, 1.0, 1.0, 0.0), 0.25)
+		tween.tween_callback(sprite.queue_free)
+
+	# Spawn Horizontal Fire Pillars (7, 2) on Left/Right cells for this ring step
+	for cell in h_step_cells:
+		spawn_fire_tile.call(cell, _tex_fire_h)
+
+	# Spawn Vertical Fire Pillars (7, 3) on Up/Down cells for this ring step
+	for cell in v_step_cells:
+		spawn_fire_tile.call(cell, _tex_fire_v)
 
 func _on_player_dug_tile(pos: Vector2) -> void:
 	_spawn_vfx(dig_vfx, pos, Color("8b5a2b")) # Brown placeholder
@@ -145,29 +192,49 @@ func _on_player_placed_bomb(pos: Vector2) -> void:
 
 
 func _on_player_detonated_bomb(pos: Vector2) -> void:
-	_play_sfx(null, "Loud Boom (Explosion)")
 	if _camera and _camera.has_method("shake"):
-		_camera.shake(10.0)
-		
-	var particles = CPUParticles2D.new()
-	particles.global_position = pos
-	particles.amount = 30
-	particles.explosiveness = 1.0
-	particles.one_shot = true
-	particles.lifetime = 0.6
-	particles.spread = 180.0
-	particles.gravity = Vector2(0, 300.0)
-	particles.initial_velocity_min = 80.0
-	particles.initial_velocity_max = 150.0
-	particles.scale_amount_min = 2.0
-	particles.scale_amount_max = 6.0
-	particles.color = Color(1.0, 0.4, 0.0) # Fiery Orange/Red
-	
-	add_child(particles)
-	particles.emitting = true
-	
-	var timer = get_tree().create_timer(particles.lifetime + 0.1)
-	timer.timeout.connect(particles.queue_free)
+		_camera.shake(12.0)
+
+	# 1. Central Fiery Burst
+	var center_particles = CPUParticles2D.new()
+	center_particles.global_position = pos
+	center_particles.amount = 24
+	center_particles.explosiveness = 1.0
+	center_particles.one_shot = true
+	center_particles.lifetime = 0.5
+	center_particles.spread = 180.0
+	center_particles.gravity = Vector2(0, 100.0)
+	center_particles.initial_velocity_min = 60.0
+	center_particles.initial_velocity_max = 120.0
+	center_particles.scale_amount_min = 3.0
+	center_particles.scale_amount_max = 6.0
+	center_particles.color = Color(1.0, 0.4, 0.0)
+	add_child(center_particles)
+	center_particles.emitting = true
+	var timer1 := get_tree().create_timer(0.6)
+	timer1.timeout.connect(center_particles.queue_free)
+
+	# 2. 4-Way Cardinal Cross Blast Streams (+ Pattern - 6 Tiles Range)
+	var angles := [0.0, 90.0, 180.0, 270.0]
+	for angle in angles:
+		var p = CPUParticles2D.new()
+		p.global_position = pos
+		p.amount = 18
+		p.explosiveness = 0.95
+		p.one_shot = true
+		p.lifetime = 0.5
+		p.direction = Vector2.RIGHT.rotated(deg_to_rad(angle))
+		p.spread = 8.0 # Narrow beam along cardinal direction
+		p.gravity = Vector2.ZERO
+		p.initial_velocity_min = 180.0
+		p.initial_velocity_max = 280.0
+		p.scale_amount_min = 2.0
+		p.scale_amount_max = 5.0
+		p.color = Color(1.0, 0.8, 0.1) # Bright Golden Fire Wave
+		add_child(p)
+		p.emitting = true
+		var timer2 := get_tree().create_timer(0.6)
+		timer2.timeout.connect(p.queue_free)
 
 
 func _on_player_hit_rock(pos: Vector2) -> void:

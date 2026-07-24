@@ -61,6 +61,7 @@ var bombs: int = MAX_BOMBS
 var combo_count: int = 0
 var _combo_decay_timer: float = 0.0
 var _is_combo_timer_active: bool = false
+var _active_placed_bombs: Array[Dictionary] = []
 var _is_moving: bool = false
 var _last_emitted_moving: bool = false
 var _target_position: Vector2
@@ -409,6 +410,15 @@ func _process(delta: float) -> void:
 		if _combo_decay_timer <= 0.0:
 			_reset_combo()
 
+	if _active_placed_bombs.size() > 0:
+		var to_detonate: Array[Dictionary] = []
+		for bomb in _active_placed_bombs:
+			bomb["timer"] -= delta
+			if bomb["timer"] <= 0.0:
+				to_detonate.append(bomb)
+		for bomb in to_detonate:
+			_explode_single_bomb(bomb)
+
 	if _is_low_battery and _low_bat_label and _low_bat_label.visible:
 		var pulse: float = (sin(Time.get_ticks_msec() * 0.012) + 1.0) * 0.5
 		_low_bat_label.modulate = Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.2, 0.2), pulse)
@@ -555,6 +565,11 @@ func _collect_diamond() -> void:
 
 
 func _detonate_bomb() -> void:
+	# If a bomb is already active on the field -> REMOTE DETONATION!
+	if _active_placed_bombs.size() > 0:
+		_remote_detonate_all_bombs()
+		return
+
 	if bombs <= 0 or battery < BOMB_BATTERY_COST:
 		return
 		
@@ -569,7 +584,6 @@ func _detonate_bomb() -> void:
 	var bomb_sprite := Sprite2D.new()
 	bomb_sprite.texture = _sprite.texture
 	bomb_sprite.region_enabled = true
-	# Atlas coordinate (5, 1) with 1px spacing: x = 5 * 17 = 85, y = 1 * 17 = 17
 	bomb_sprite.region_rect = Rect2(85, 17, 16, 16)
 	bomb_sprite.global_position = bomb_pos
 	bomb_sprite.z_index = 5
@@ -583,41 +597,42 @@ func _detonate_bomb() -> void:
 	placed_bomb.emit(bomb_pos)
 	
 	# Blinking animation
-	var tween := bomb_sprite.create_tween()
-	tween.set_loops(4)
-	tween.tween_property(bomb_sprite, "modulate", Color(1, 0, 0), 0.25)
-	tween.tween_property(bomb_sprite, "modulate", Color(1, 1, 1), 0.25)
+	var blink_tween := bomb_sprite.create_tween()
+	blink_tween.set_loops(8)
+	blink_tween.tween_property(bomb_sprite, "modulate", Color(1, 0, 0), 0.125)
+	blink_tween.tween_property(bomb_sprite, "modulate", Color(1, 1, 1), 0.125)
 	
-	# Wait for 2 seconds
-	await get_tree().create_timer(2.0).timeout
-	
+	var bomb_data := {
+		"cell": current_cell,
+		"pos": bomb_pos,
+		"sprite": bomb_sprite,
+		"timer": 2.0
+	}
+	_active_placed_bombs.append(bomb_data)
+
+
+func _remote_detonate_all_bombs() -> void:
+	var bombs_copy := _active_placed_bombs.duplicate()
+	_active_placed_bombs.clear()
+	for bomb in bombs_copy:
+		_explode_single_bomb(bomb)
+
+
+func _explode_single_bomb(bomb_data: Dictionary) -> void:
+	if _active_placed_bombs.has(bomb_data):
+		_active_placed_bombs.erase(bomb_data)
+
+	var bomb_sprite = bomb_data.get("sprite", null)
 	if is_instance_valid(bomb_sprite):
 		bomb_sprite.queue_free()
-	
-	# Clear 3x3 area & auto-collect items
-	for dx in range(-1, 2):
-		for dy in range(-1, 2):
-			var target_cell: Vector2i = current_cell + Vector2i(dx, dy)
-			if _dirt_layer.get_cell_source_id(target_cell) != -1:
-				var atlas: Vector2i = _dirt_layer.get_cell_atlas_coords(target_cell)
-				if atlas == TILE_GOLD:
-					_clear_tile(target_cell)
-					_collect_gold()
-					collected_gold.emit(_dirt_layer.to_global(_dirt_layer.map_to_local(target_cell)))
-				elif atlas == TILE_DIAMOND:
-					_clear_tile(target_cell)
-					_collect_diamond()
-					collected_diamond.emit(_dirt_layer.to_global(_dirt_layer.map_to_local(target_cell)))
-				elif atlas != TILE_WALL:
-					_clear_tile(target_cell)
-					
-	# Check if player is caught in the blast (Chebyshev distance in grid cells)
-	var player_cell := _dirt_layer.local_to_map(_dirt_layer.to_local(global_position))
-	var cell_diff := player_cell - current_cell
-	if abs(cell_diff.x) <= 1 and abs(cell_diff.y) <= 1:
-		_spend_battery(5.0)
-					
+
+	var origin_cell: Vector2i = bomb_data["cell"]
+	var bomb_pos: Vector2 = bomb_data["pos"]
+
 	detonated_bomb.emit(bomb_pos)
+	
+	# Execute Step-by-Step 4-Way Cross-Blast Wave (+ Pattern - 0.04s per step)
+	await _dirt_layer.explode_cross_pattern(origin_cell, 6, self)
 
 func _connect_to_event_bus() -> void:
 	if not EventBus:

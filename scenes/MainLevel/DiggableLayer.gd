@@ -27,6 +27,7 @@ const SOURCE_ID: int = 0
 
 signal rock_wobbling(pos: Vector2)
 signal rock_shattered(pos: Vector2)
+signal cross_blast_step(origin_cell: Vector2i, h_step_cells: Array[Vector2i], v_step_cells: Array[Vector2i])
 
 var _wobbling_rocks: Dictionary = {} # cell -> timer float
 var _falling_rocks: Dictionary = {}  # cell -> step timer float
@@ -111,6 +112,91 @@ func _step_rock_fall(cell: Vector2i, player, player_cell: Vector2i) -> void:
 func clear_tile(cell: Vector2i) -> void:
 	set_cell(cell, SOURCE_ID, TILE_PLAIN)
 	check_falling_rock_above(cell)
+
+
+## Blasts in a 4-way cross pattern (+ shape) up to range_radius cells in each cardinal direction.
+## Handles tile removal, ore auto-collection, cascading terrain bomb chain reactions, and destroying falling rocks.
+func explode_cross_pattern(origin_cell: Vector2i, range_radius: int = 6, player_node = null) -> Array[Vector2i]:
+	var affected_cells: Array[Vector2i] = []
+	affected_cells.append(origin_cell)
+	
+	# Clear origin cell if present
+	if get_cell_source_id(origin_cell) != -1:
+		var atlas := get_cell_atlas_coords(origin_cell)
+		if atlas != TILE_WALL:
+			clear_tile(origin_cell)
+
+	cross_blast_step.emit(origin_cell, [origin_cell], [origin_cell])
+
+	var active_dirs: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+
+	for r in range(1, range_radius + 1):
+		await get_tree().create_timer(0.04).timeout
+		
+		var step_h: Array[Vector2i] = []
+		var step_v: Array[Vector2i] = []
+		var stopped_dirs: Array[Vector2i] = []
+
+		for dir in active_dirs:
+			var target_cell: Vector2i = origin_cell + dir * r
+			var source_id := get_cell_source_id(target_cell)
+			if source_id == -1:
+				affected_cells.append(target_cell)
+				if dir.y == 0:
+					step_h.append(target_cell)
+				else:
+					step_v.append(target_cell)
+				continue
+
+			var atlas := get_cell_atlas_coords(target_cell)
+			if atlas == TILE_WALL:
+				stopped_dirs.append(dir)
+				continue
+
+			affected_cells.append(target_cell)
+			if dir.y == 0:
+				step_h.append(target_cell)
+			else:
+				step_v.append(target_cell)
+
+			# Destroy wobbling / falling rocks at target cell
+			if _wobbling_rocks.has(target_cell):
+				_wobbling_rocks.erase(target_cell)
+				rock_shattered.emit(map_to_local(target_cell))
+			if _falling_rocks.has(target_cell):
+				_falling_rocks.erase(target_cell)
+				rock_shattered.emit(map_to_local(target_cell))
+
+			if atlas == TILE_BOMB:
+				# Cascade! Convert terrain bomb tile into secondary cross explosion
+				clear_tile(target_cell)
+				explode_cross_pattern(target_cell, range_radius, player_node)
+			elif atlas == TILE_GOLD:
+				clear_tile(target_cell)
+				if player_node and player_node.has_method("_collect_gold"):
+					player_node._collect_gold()
+			elif atlas == TILE_DIAMOND:
+				clear_tile(target_cell)
+				if player_node and player_node.has_method("_collect_diamond"):
+					player_node._collect_diamond()
+			elif atlas != TILE_PLAIN:
+				clear_tile(target_cell)
+
+		for d in stopped_dirs:
+			active_dirs.erase(d)
+
+		if step_h.size() > 0 or step_v.size() > 0:
+			cross_blast_step.emit(origin_cell, step_h, step_v)
+
+		if player_node and player_node.has_method("take_rock_crush_damage"):
+			var player_cell: Vector2i = local_to_map(to_local(player_node.global_position))
+			if step_h.has(player_cell) or step_v.has(player_cell):
+				player_node.take_rock_crush_damage(5.0)
+
+		if active_dirs.is_empty():
+			break
+
+	return affected_cells
 
 
 ## Returns true if a diggable tile was found and replaced with plain tile at the given cell.
