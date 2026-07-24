@@ -16,6 +16,9 @@ const TILE_BATTERY = Vector2i(7, 0)
 const TILE_PLAIN = Vector2i(1, 1)
 const TILE_DIAMOND = Vector2i(3, 1)
 const TILE_GOLD = Vector2i(4, 1)
+const TILE_LEFT_BORDER = Vector2i(2, 1)
+const TILE_RIGHT_BORDER = Vector2i(0, 1)
+const OUTER_MARGIN: int = 10
 
 const SOURCE_ID: int = 0
 
@@ -37,13 +40,23 @@ func generate_map() -> void:
 	var next_guaranteed_battery_row: int = rng.randi_range(8, 12)
 
 	for y in range(map_depth):
-		# Draw indestructible side border walls (column 0 and column map_width + 1)
+		# Fill left outer area: plain background tiles (x = -11 to -2) and adjacent left border (x = -1)
+		for x in range(-11, -1):
+			set_cell(Vector2i(x, y), SOURCE_ID, TILE_PLAIN)
+		set_cell(Vector2i(-1, y), SOURCE_ID, TILE_LEFT_BORDER)
+
+		# Indestructible side border walls (column 0 and column map_width + 1)
 		set_cell(Vector2i(0, y), SOURCE_ID, TILE_WALL)
 		set_cell(Vector2i(map_width + 1, y), SOURCE_ID, TILE_WALL)
 
+		# Fill right outer area: adjacent right border (x = map_width + 2) and plain background tiles (x = map_width + 3 to map_width + 12)
+		set_cell(Vector2i(map_width + 2, y), SOURCE_ID, TILE_RIGHT_BORDER)
+		for x in range(map_width + 3, map_width + 13):
+			set_cell(Vector2i(x, y), SOURCE_ID, TILE_PLAIN)
+
 		# Absolute bottom row: complete metallic indestructible floor
 		if y == map_depth - 1:
-			for x in range(1, map_width + 1):
+			for x in range(-11, map_width + 13):
 				set_cell(Vector2i(x, y), SOURCE_ID, TILE_WALL)
 			continue
 

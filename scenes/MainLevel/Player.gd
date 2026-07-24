@@ -38,6 +38,7 @@ const TILE_BATTERY: Vector2i = Vector2i(7, 0)
 const TILE_PLAIN: Vector2i = Vector2i(1, 1)
 const TILE_DIAMOND: Vector2i = Vector2i(3, 1)
 const TILE_GOLD: Vector2i = Vector2i(4, 1)
+const TILE_BOMB_ONLY: Vector2i = Vector2i(5, 1)
 const SOURCE_ID: int = 0
 const BATTERY_RECHARGE_AMOUNT: float = 3.0
 const MINE_BATTERY_DAMAGE: float = 4.0
@@ -530,8 +531,8 @@ func _detonate_bomb() -> void:
 	var bomb_sprite := Sprite2D.new()
 	bomb_sprite.texture = _sprite.texture
 	bomb_sprite.region_enabled = true
-	# Atlas coordinate (6, 0) with 1px spacing: x = 6 * 17 = 102, y = 0 * 17 = 0
-	bomb_sprite.region_rect = Rect2(102, 0, 16, 16)
+	# Atlas coordinate (5, 1) with 1px spacing: x = 5 * 17 = 85, y = 1 * 17 = 17
+	bomb_sprite.region_rect = Rect2(85, 17, 16, 16)
 	bomb_sprite.global_position = bomb_pos
 	bomb_sprite.z_index = 5
 	get_parent().add_child(bomb_sprite)
