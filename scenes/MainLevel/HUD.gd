@@ -1,5 +1,7 @@
 extends Control
 
+@export var hud_scale: float = 2.0
+
 const SHARD_COUNT: int = 10
 const SHARD_SIZE: Vector2 = Vector2(14.0, 14.0)
 const HALF_SHARD_SIZE: Vector2 = Vector2(7.0, 14.0)
@@ -35,6 +37,7 @@ var _tex_gold_hud: AtlasTexture
 
 var _battery_texture_rects: Array[TextureRect] = []
 var _bomb_texture_rects: Array[TextureRect] = []
+var _top_banner: PanelContainer = null
 var _gold_container: HBoxContainer
 var _diamond_container: HBoxContainer
 var _combo_label: Label
@@ -89,95 +92,139 @@ func _ready() -> void:
 	_tex_gold_hud.atlas = tile_sheet
 	_tex_gold_hud.region = Rect2(119, 17, 16, 16) # Tile (7, 1)
 
-	_container.add_theme_constant_override("separation", 2)
+	# Create Top Arcade Banner Panel (3x Retro Pixel Frame)
+	_top_banner = PanelContainer.new()
+	_top_banner.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_top_banner.custom_minimum_size.y = 96.0
+	_top_banner.z_index = 10
+	_top_banner.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+	var banner_style := StyleBoxFlat.new()
+	banner_style.bg_color = Color(0.08, 0.08, 0.12, 0.96) # Dark retro arcade charcoal-blue
+	banner_style.border_width_bottom = 4
+	banner_style.border_width_top = 2
+	banner_style.border_color = Color(0.95, 0.7, 0.1, 1.0) # Solid arcade gold frame border
+	banner_style.content_margin_left = 16
+	banner_style.content_margin_top = 8
+	banner_style.content_margin_right = 16
+	banner_style.content_margin_bottom = 8
+	_top_banner.add_theme_stylebox_override("panel", banner_style)
+	add_child(_top_banner)
+
+	var main_hbox := HBoxContainer.new()
+	main_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_top_banner.add_child(main_hbox)
+
+	# --- Left Section: 3x Battery Bar & Bomb Slots ---
+	var left_vbox := VBoxContainer.new()
+	left_vbox.add_theme_constant_override("separation", 4)
+	main_hbox.add_child(left_vbox)
+
+	# Move $BatteryContainer into left_vbox
+	if _container.get_parent():
+		_container.get_parent().remove_child(_container)
+	left_vbox.add_child(_container)
+	_container.add_theme_constant_override("separation", 0)
 
 	for i in SHARD_COUNT:
 		var tex_rect := TextureRect.new()
-		tex_rect.custom_minimum_size = Vector2(16, 16)
+		tex_rect.custom_minimum_size = Vector2(40, 40)
 		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		tex_rect.texture = _tex_battery_full
 		_container.add_child(tex_rect)
 		_battery_texture_rects.append(tex_rect)
 
-	# Setup Bomb Container
 	_bomb_container = HBoxContainer.new()
-	_bomb_container.position = Vector2(10, 30)
-	_bomb_container.add_theme_constant_override("separation", 3)
+	_bomb_container.add_theme_constant_override("separation", 6)
 	for i in 3:
 		var tex_rect := TextureRect.new()
-		tex_rect.custom_minimum_size = Vector2(16, 16)
+		tex_rect.custom_minimum_size = Vector2(34, 34)
 		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		tex_rect.texture = _tex_bomb_hud
 		_bomb_container.add_child(tex_rect)
 		_bomb_texture_rects.append(tex_rect)
-	add_child(_bomb_container)
+	left_vbox.add_child(_bomb_container)
 
-	# Initialize Gold & Diamond counter HBoxContainers with Atlas icons
+	# Spacer between Left and Right sections
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	main_hbox.add_child(spacer)
+
+	# --- Right Section: 3x Depth & Collectibles ---
+	var right_vbox := VBoxContainer.new()
+	right_vbox.add_theme_constant_override("separation", 6)
+	main_hbox.add_child(right_vbox)
+
+	_layer_label = Label.new()
+	_layer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_layer_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+	_layer_label.add_theme_font_size_override("font_size", 20)
+	right_vbox.add_child(_layer_label)
+
+	var collectibles_hbox := HBoxContainer.new()
+	collectibles_hbox.alignment = BoxContainer.ALIGNMENT_END
+	collectibles_hbox.add_theme_constant_override("separation", 20)
+	right_vbox.add_child(collectibles_hbox)
+
+	# Gold Row (3x)
 	_gold_container = HBoxContainer.new()
-	_gold_container.position = Vector2(10, 50)
-	_gold_container.add_theme_constant_override("separation", 4)
-	
+	_gold_container.add_theme_constant_override("separation", 6)
 	var gold_icon := TextureRect.new()
-	gold_icon.custom_minimum_size = Vector2(14, 14)
+	gold_icon.custom_minimum_size = Vector2(34, 34)
 	gold_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	gold_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	gold_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	gold_icon.texture = _tex_gold_hud
 	_gold_container.add_child(gold_icon)
-	
+
 	_gold_label = Label.new()
 	_gold_label.text = "GOLD: 0"
 	_gold_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
-	_gold_label.add_theme_font_size_override("font_size", 11)
+	_gold_label.add_theme_font_size_override("font_size", 18)
 	_gold_container.add_child(_gold_label)
-	add_child(_gold_container)
+	collectibles_hbox.add_child(_gold_container)
 
+	# Diamond Row (3x)
 	_diamond_container = HBoxContainer.new()
-	_diamond_container.position = Vector2(10, 68)
-	_diamond_container.add_theme_constant_override("separation", 4)
-
+	_diamond_container.add_theme_constant_override("separation", 6)
 	var diamond_icon := TextureRect.new()
-	diamond_icon.custom_minimum_size = Vector2(14, 14)
+	diamond_icon.custom_minimum_size = Vector2(34, 34)
 	diamond_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	diamond_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	diamond_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	diamond_icon.texture = _tex_diamond_hud
 	_diamond_container.add_child(diamond_icon)
 
 	_diamond_label = Label.new()
 	_diamond_label.text = "DIAMOND: 0"
 	_diamond_label.add_theme_color_override("font_color", Color(0.0, 0.9, 1.0))
-	_diamond_label.add_theme_font_size_override("font_size", 11)
+	_diamond_label.add_theme_font_size_override("font_size", 18)
 	_diamond_container.add_child(_diamond_label)
-	add_child(_diamond_container)
+	collectibles_hbox.add_child(_diamond_container)
 
-	# Initialize combo label dynamically
+	# Combo Label (floating below top banner)
 	_combo_label = Label.new()
-	_combo_label.position = Vector2(10, 88)
+	_combo_label.position = Vector2(20, 105)
 	_combo_label.text = ""
 	_combo_label.add_theme_color_override("font_color", Color("ffd700"))
-	_combo_label.add_theme_font_size_override("font_size", 14)
+	_combo_label.add_theme_font_size_override("font_size", 20)
 	add_child(_combo_label)
-
-	# Initialize layer & depth tracker label (top-right anchored)
-	_layer_label = Label.new()
-	_layer_label.anchors_preset = Control.PRESET_TOP_RIGHT
-	_layer_label.anchor_left = 1.0
-	_layer_label.anchor_right = 1.0
-	_layer_label.offset_left = -250
-	_layer_label.offset_top = 10
-	_layer_label.offset_right = -10
-	_layer_label.offset_bottom = 35
-	_layer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_layer_label.add_theme_color_override("font_color", Color(0.92, 0.94, 1.0))
-	_layer_label.add_theme_font_size_override("font_size", 12)
-	add_child(_layer_label)
 
 	# Wait one frame so Player._ready() has had time to run and join its group
 	call_deferred("_connect_to_player")
+	_align_hud_to_gameplay()
+
+
+func _align_hud_to_gameplay() -> void:
+	pass
 
 
 func _process(delta: float) -> void:
+	_align_hud_to_gameplay()
 	if _is_low_battery:
 		_pulse_timer += delta * 12.0
 		var pulse: float = (sin(_pulse_timer) + 1.0) * 0.5
@@ -220,8 +267,8 @@ func _on_gold_changed(gold_count: int) -> void:
 	if _gold_label:
 		_gold_label.text = "GOLD: " + str(gold_count)
 	if _gold_container:
-		_gold_container.pivot_offset = Vector2(0, _gold_container.size.y * 0.5)
-		_gold_container.scale = Vector2(1.25, 1.25)
+		_gold_container.pivot_offset = Vector2(_gold_container.size.x * 0.5, _gold_container.size.y * 0.5)
+		_gold_container.scale = Vector2(1.2, 1.2)
 		var tween := create_tween()
 		tween.tween_property(_gold_container, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 
@@ -230,8 +277,8 @@ func _on_diamond_changed(diamond_count: int) -> void:
 	if _diamond_label:
 		_diamond_label.text = "DIAMOND: " + str(diamond_count)
 	if _diamond_container:
-		_diamond_container.pivot_offset = Vector2(0, _diamond_container.size.y * 0.5)
-		_diamond_container.scale = Vector2(1.25, 1.25)
+		_diamond_container.pivot_offset = Vector2(_diamond_container.size.x * 0.5, _diamond_container.size.y * 0.5)
+		_diamond_container.scale = Vector2(1.2, 1.2)
 		var tween := create_tween()
 		tween.tween_property(_diamond_container, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 
@@ -245,7 +292,7 @@ func _on_depth_changed(depth: int, biome_name: String) -> void:
 		_last_biome_name = biome_name
 		# Visual scale punch transition on entering a new biome layer
 		_layer_label.pivot_offset = Vector2(_layer_label.size.x, _layer_label.size.y * 0.5)
-		_layer_label.scale = Vector2(1.35, 1.35)
+		_layer_label.scale = Vector2(1.25, 1.25)
 		var tween := create_tween()
 		tween.tween_property(_layer_label, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 
@@ -285,8 +332,8 @@ func _on_low_battery_warning(is_low: bool) -> void:
 	_is_low_battery = is_low
 	if _is_low_battery:
 		# Scale punch HUD battery container to grab immediate attention
-		_container.pivot_offset = Vector2(0, _container.size.y * 0.5)
-		_container.scale = Vector2(1.25, 1.25)
+		_container.pivot_offset = Vector2(_container.size.x * 0.5, _container.size.y * 0.5)
+		_container.scale = Vector2(1.2, 1.2)
 		var tween := create_tween()
 		tween.tween_property(_container, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 	else:

@@ -65,3 +65,4 @@ offset_left = 10.0
 offset_top = 10.0
 offset_right = 200.0
 offset_bottom = 30.0
+theme_override_constants/separation = 0
