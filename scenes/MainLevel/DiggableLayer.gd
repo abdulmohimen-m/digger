@@ -129,7 +129,9 @@ func explode_cross_pattern(origin_cell: Vector2i, range_radius: int = 6, player_
 	if EventBus:
 		EventBus.detonated_bomb.emit(to_global(map_to_local(origin_cell)))
 
-	cross_blast_step.emit(origin_cell, [origin_cell], [origin_cell])
+	var init_h: Array[Vector2i] = [origin_cell]
+	var init_v: Array[Vector2i] = [origin_cell]
+	cross_blast_step.emit(origin_cell, init_h, init_v)
 
 	var active_dirs: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 

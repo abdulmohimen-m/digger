@@ -148,9 +148,13 @@ This document logs all the features, logic, and polish implemented during this d
   - **Undiggable Protection:** Undiggable tiles and perimeter walls always block drilling across all levels.
 
 ### 7. 🪨 Falling Rock Gravity Physics System
-- **0.4s Wobble Telegraph:** Digging, blasting, or clearing a tile beneath any Rock block (`TILE_ROCK` or `TILE_CRACKED_ROCK`) triggers a **0.4-second wobble state** with particle dust emissions and camera jitter.
-- **Medium-Slow Gravity Fall:** If space beneath remains empty after 0.4s, the rock falls vertically downward at ~5.5 tiles/sec (`0.18s` step timer), providing a ~1-2 tile reaction window to step aside.
-- **Player Crush Damage & Audio:** Landing on the player vehicle deals a **3.0 Battery Damage Penalty**, triggers a 10px camera shake, floating `🪨 CRUSHED! -3 BATTERY` text popup, plays `SoundManager.play_random_rock_dig_sfx()` crunch audio, and shatters the rock.
+- **0.4s/0.7s Wobble Telegraph:** Digging, blasting, or clearing a tile beneath any Rock block (`TILE_ROCK` or `TILE_CRACKED_ROCK`) triggers a **0.7-second wobble state** with particle dust emissions and camera jitter.
+- **Medium-Slow Gravity Fall:** If space beneath remains empty after wobble ends, the rock falls vertically downward at ~2.8 tiles/sec (`0.35s` step timer), providing a readable reaction window to step aside.
+- **💥 Overhauled Player Crush Juice & Visual Feedback:**
+  - **Vehicle Crush Flattening:** Vehicle sprite flattens heavily downward (`scale = Vector2(1.6, 0.4)`) and flashes bright crimson (`Color(2.2, 0.3, 0.3)`), springing back over 0.25s.
+  - **20 Stone Fragments + 10 Dust Particles:** Explode outward and upward from the vehicle hull.
+  - **🔴 Red Screen Impact Flash:** Full-screen red overlay flashes at 55% opacity and fades out over 0.3s.
+  - **💥 14.0px Camera Noise Shake & Arcade Popup:** Triggers 14px camera shake, stone crunch SFX, and floating `💥 CRUSHED! -3.0⚡` text popup.
 - **Selective Heavy Gravity Rule:** Soil, Gold, Diamonds, and Bombs remain anchored in place so vertical digging shafts don't cause unwanted cave-ins. Boulders/Rocks remain distinct tactical hazards.
 
 ### 8. Directional Lunge & Squash/Stretch Hit Animation

@@ -522,7 +522,18 @@ func take_rock_crush_damage(amount: float = 3.0) -> void:
 	_spend_battery(amount)
 	_reset_combo()
 	rock_crushed_player.emit(global_position)
-	_play_impact_lunge(Vector2i(0, 1))
+	_play_crush_animation()
+
+
+func _play_crush_animation() -> void:
+	var tween := create_tween()
+	# Heavy vehicle flattening (x stretched 1.6x, y squashed 0.4x) + bright red flash
+	tween.tween_property(_sprite, "scale", Vector2(1.6, 0.4), 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(_sprite, "modulate", Color(2.2, 0.3, 0.3), 0.05)
+	
+	# Recoil back to normal over 0.25s using spring easing
+	tween.tween_property(_sprite, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(_sprite, "modulate", Color.WHITE, 0.25)
 
 
 func _get_frenzy_speed() -> float:

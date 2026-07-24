@@ -56,6 +56,8 @@ func _ready() -> void:
 
 func _on_rock_wobbling(pos: Vector2) -> void:
 	_spawn_vfx(null, pos, Color("a8a8a8"))
+	if SoundManager:
+		SoundManager.play_random_rock_dig_sfx()
 	if _camera and _camera.has_method("shake"):
 		_camera.shake(2.0)
 
@@ -67,15 +69,69 @@ func _on_rock_shattered(pos: Vector2) -> void:
 		_camera.shake(8.0)
 
 func _on_rock_crushed_player(pos: Vector2) -> void:
-	_spawn_vfx(null, pos, Color(1.0, 0.2, 0.2))
-	_spawn_floating_text(pos, "🪨 CRUSHED! -3 BATTERY", Color(1.0, 0.2, 0.2))
+	# 1. 20 Dark Stone Fragments Burst
+	var stone_particles = CPUParticles2D.new()
+	stone_particles.global_position = pos
+	stone_particles.amount = 20
+	stone_particles.explosiveness = 1.0
+	stone_particles.one_shot = true
+	stone_particles.lifetime = 0.5
+	stone_particles.spread = 180.0
+	stone_particles.gravity = Vector2(0, 400.0)
+	stone_particles.initial_velocity_min = 60.0
+	stone_particles.initial_velocity_max = 140.0
+	stone_particles.scale_amount_min = 3.0
+	stone_particles.scale_amount_max = 6.0
+	stone_particles.color = Color(0.3, 0.3, 0.35)
+	add_child(stone_particles)
+	stone_particles.emitting = true
+	var timer1 := get_tree().create_timer(0.6)
+	timer1.timeout.connect(stone_particles.queue_free)
+
+	# 2. 10 Dust Cloud Particles Burst
+	var dust_particles = CPUParticles2D.new()
+	dust_particles.global_position = pos
+	dust_particles.amount = 10
+	dust_particles.explosiveness = 0.9
+	dust_particles.one_shot = true
+	dust_particles.lifetime = 0.4
+	dust_particles.spread = 180.0
+	dust_particles.gravity = Vector2(0, -50.0)
+	dust_particles.initial_velocity_min = 20.0
+	dust_particles.initial_velocity_max = 60.0
+	dust_particles.scale_amount_min = 4.0
+	dust_particles.scale_amount_max = 8.0
+	dust_particles.color = Color(0.7, 0.6, 0.5, 0.6)
+	add_child(dust_particles)
+	dust_particles.emitting = true
+	var timer2 := get_tree().create_timer(0.5)
+	timer2.timeout.connect(dust_particles.queue_free)
+
+	# 3. 14.0px Heavy Camera Shake & Audio
 	if SoundManager:
 		SoundManager.play_random_rock_dig_sfx()
 	if _camera and _camera.has_method("shake"):
-		_camera.shake(10.0)
+		_camera.shake(14.0)
+
+	# 4. Bold Arcade Floating Text Popup ("💥 CRUSHED! -3.0⚡")
+	_spawn_floating_text(pos, "💥 CRUSHED! -3.0⚡", Color(1.0, 0.25, 0.25))
+
+	# 5. Red Full-Screen Impact Flash Overlay
+	var canvas_layer := CanvasLayer.new()
+	canvas_layer.layer = 20
+	var flash_rect := ColorRect.new()
+	flash_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash_rect.color = Color(1.0, 0.0, 0.0, 0.55)
+	canvas_layer.add_child(flash_rect)
+	add_child(canvas_layer)
+
+	var tween := create_tween()
+	tween.tween_property(flash_rect, "color", Color(1.0, 0.0, 0.0, 0.0), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(canvas_layer.queue_free)
 
 
-func _on_cross_blast_step(origin_cell: Vector2i, h_step_cells: Array[Vector2i], v_step_cells: Array[Vector2i]) -> void:
+func _on_cross_blast_step(origin_cell: Vector2i, h_step_cells: Array, v_step_cells: Array) -> void:
 	var dirt_layer = get_parent().get_node_or_null("Tilemaps/DirtLayer")
 	if not dirt_layer:
 		return
