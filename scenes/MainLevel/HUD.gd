@@ -26,9 +26,17 @@ static func generate_random_miner_name() -> String:
 	var random_num: int = randi_range(1000, 9999)
 	return base_name + str(random_num)
 
-# Array of Arrays: [[left_rect, right_rect], ...]
-var _shards: Array[Array] = []
-var _bomb_rects: Array[ColorRect] = []
+var _tex_battery_empty: AtlasTexture
+var _tex_battery_half: AtlasTexture
+var _tex_battery_full: AtlasTexture
+var _tex_bomb_hud: AtlasTexture
+var _tex_diamond_hud: AtlasTexture
+var _tex_gold_hud: AtlasTexture
+
+var _battery_texture_rects: Array[TextureRect] = []
+var _bomb_texture_rects: Array[TextureRect] = []
+var _gold_container: HBoxContainer
+var _diamond_container: HBoxContainer
 var _combo_label: Label
 var _gold_label: Label
 var _diamond_label: Label
@@ -36,7 +44,7 @@ var _layer_label: Label
 var _bomb_container: HBoxContainer
 var _is_low_battery: bool = false
 var _pulse_timer: float = 0.0
-var _current_active_color: Color = COLOR_FULL
+var _current_active_color: Color = Color.WHITE
 var _vignette: ColorRect = null
 var _last_biome_name: String = ""
 var _last_submitted_player_name: String = ""
@@ -54,57 +62,98 @@ func _ready() -> void:
 	_vignette.z_index = -1
 	add_child(_vignette)
 
-	_container.add_theme_constant_override("separation", 3)
+	# Initialize AtlasTextures from GameSpecificTiles.png
+	var tile_sheet: Texture2D = preload("res://assets/GameSpecificTiles.png")
+	
+	_tex_battery_empty = AtlasTexture.new()
+	_tex_battery_empty.atlas = tile_sheet
+	_tex_battery_empty.region = Rect2(68, 85, 16, 16) # Tile (4, 5)
+
+	_tex_battery_half = AtlasTexture.new()
+	_tex_battery_half.atlas = tile_sheet
+	_tex_battery_half.region = Rect2(85, 85, 16, 16) # Tile (5, 5)
+
+	_tex_battery_full = AtlasTexture.new()
+	_tex_battery_full.atlas = tile_sheet
+	_tex_battery_full.region = Rect2(102, 85, 16, 16) # Tile (6, 5)
+
+	_tex_bomb_hud = AtlasTexture.new()
+	_tex_bomb_hud.atlas = tile_sheet
+	_tex_bomb_hud.region = Rect2(85, 17, 16, 16) # Tile (5, 1)
+
+	_tex_diamond_hud = AtlasTexture.new()
+	_tex_diamond_hud.atlas = tile_sheet
+	_tex_diamond_hud.region = Rect2(102, 17, 16, 16) # Tile (6, 1)
+
+	_tex_gold_hud = AtlasTexture.new()
+	_tex_gold_hud.atlas = tile_sheet
+	_tex_gold_hud.region = Rect2(119, 17, 16, 16) # Tile (7, 1)
+
+	_container.add_theme_constant_override("separation", 2)
 
 	for i in SHARD_COUNT:
-		var shard_parent := HBoxContainer.new()
-		shard_parent.add_theme_constant_override("separation", 0)
-		shard_parent.custom_minimum_size = SHARD_SIZE
-		
-		var left_half := ColorRect.new()
-		left_half.custom_minimum_size = HALF_SHARD_SIZE
-		left_half.color = COLOR_FULL
-		
-		var right_half := ColorRect.new()
-		right_half.custom_minimum_size = HALF_SHARD_SIZE
-		right_half.color = COLOR_FULL
-		
-		shard_parent.add_child(left_half)
-		shard_parent.add_child(right_half)
-		_container.add_child(shard_parent)
-		
-		_shards.append([left_half, right_half])
+		var tex_rect := TextureRect.new()
+		tex_rect.custom_minimum_size = Vector2(16, 16)
+		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex_rect.texture = _tex_battery_full
+		_container.add_child(tex_rect)
+		_battery_texture_rects.append(tex_rect)
 
 	# Setup Bomb Container
 	_bomb_container = HBoxContainer.new()
 	_bomb_container.position = Vector2(10, 30)
-	_bomb_container.add_theme_constant_override("separation", 5)
+	_bomb_container.add_theme_constant_override("separation", 3)
 	for i in 3:
-		var rect := ColorRect.new()
-		rect.custom_minimum_size = Vector2(14, 14)
-		rect.color = Color(0.9, 0.1, 0.1) # Bright red for bombs
-		_bomb_container.add_child(rect)
-		_bomb_rects.append(rect)
+		var tex_rect := TextureRect.new()
+		tex_rect.custom_minimum_size = Vector2(16, 16)
+		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex_rect.texture = _tex_bomb_hud
+		_bomb_container.add_child(tex_rect)
+		_bomb_texture_rects.append(tex_rect)
 	add_child(_bomb_container)
 
-	# Initialize Gold & Diamond counter labels
+	# Initialize Gold & Diamond counter HBoxContainers with Atlas icons
+	_gold_container = HBoxContainer.new()
+	_gold_container.position = Vector2(10, 50)
+	_gold_container.add_theme_constant_override("separation", 4)
+	
+	var gold_icon := TextureRect.new()
+	gold_icon.custom_minimum_size = Vector2(14, 14)
+	gold_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	gold_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	gold_icon.texture = _tex_gold_hud
+	_gold_container.add_child(gold_icon)
+	
 	_gold_label = Label.new()
-	_gold_label.position = Vector2(10, 48)
-	_gold_label.text = "🟡 GOLD: 0"
+	_gold_label.text = "GOLD: 0"
 	_gold_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
 	_gold_label.add_theme_font_size_override("font_size", 11)
-	add_child(_gold_label)
+	_gold_container.add_child(_gold_label)
+	add_child(_gold_container)
+
+	_diamond_container = HBoxContainer.new()
+	_diamond_container.position = Vector2(10, 68)
+	_diamond_container.add_theme_constant_override("separation", 4)
+
+	var diamond_icon := TextureRect.new()
+	diamond_icon.custom_minimum_size = Vector2(14, 14)
+	diamond_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	diamond_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	diamond_icon.texture = _tex_diamond_hud
+	_diamond_container.add_child(diamond_icon)
 
 	_diamond_label = Label.new()
-	_diamond_label.position = Vector2(10, 64)
-	_diamond_label.text = "💎 DIAMOND: 0"
+	_diamond_label.text = "DIAMOND: 0"
 	_diamond_label.add_theme_color_override("font_color", Color(0.0, 0.9, 1.0))
 	_diamond_label.add_theme_font_size_override("font_size", 11)
-	add_child(_diamond_label)
+	_diamond_container.add_child(_diamond_label)
+	add_child(_diamond_container)
 
 	# Initialize combo label dynamically
 	_combo_label = Label.new()
-	_combo_label.position = Vector2(10, 82)
+	_combo_label.position = Vector2(10, 88)
 	_combo_label.text = ""
 	_combo_label.add_theme_color_override("font_color", Color("ffd700"))
 	_combo_label.add_theme_font_size_override("font_size", 14)
@@ -132,7 +181,7 @@ func _process(delta: float) -> void:
 	if _is_low_battery:
 		_pulse_timer += delta * 12.0
 		var pulse: float = (sin(_pulse_timer) + 1.0) * 0.5
-		_current_active_color = COLOR_FULL.lerp(COLOR_ALERT, pulse)
+		_current_active_color = Color.WHITE.lerp(COLOR_ALERT, pulse)
 		_update_shard_colors()
 		if _vignette:
 			_vignette.color = Color(1.0, 0.0, 0.0, pulse * 0.22)
@@ -169,20 +218,22 @@ func _connect_to_player() -> void:
 
 func _on_gold_changed(gold_count: int) -> void:
 	if _gold_label:
-		_gold_label.text = "🟡 GOLD: " + str(gold_count)
-		_gold_label.pivot_offset = _gold_label.size * 0.5
-		_gold_label.scale = Vector2(1.25, 1.25)
+		_gold_label.text = "GOLD: " + str(gold_count)
+	if _gold_container:
+		_gold_container.pivot_offset = Vector2(0, _gold_container.size.y * 0.5)
+		_gold_container.scale = Vector2(1.25, 1.25)
 		var tween := create_tween()
-		tween.tween_property(_gold_label, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+		tween.tween_property(_gold_container, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 
 
 func _on_diamond_changed(diamond_count: int) -> void:
 	if _diamond_label:
-		_diamond_label.text = "💎 DIAMOND: " + str(diamond_count)
-		_diamond_label.pivot_offset = _diamond_label.size * 0.5
-		_diamond_label.scale = Vector2(1.25, 1.25)
+		_diamond_label.text = "DIAMOND: " + str(diamond_count)
+	if _diamond_container:
+		_diamond_container.pivot_offset = Vector2(0, _diamond_container.size.y * 0.5)
+		_diamond_container.scale = Vector2(1.25, 1.25)
 		var tween := create_tween()
-		tween.tween_property(_diamond_label, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+		tween.tween_property(_diamond_container, "scale", Vector2.ONE, 0.15).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 
 
 func _on_depth_changed(depth: int, biome_name: String) -> void:
@@ -203,18 +254,31 @@ var _half_shards_filled: int = 20
 
 
 func _on_battery_changed(current: float, _maximum: float) -> void:
-	_half_shards_filled = int(round(current * 2.0))
+	for i in _battery_texture_rects.size():
+		var cell_val: float = current - float(i)
+		var tex_rect: TextureRect = _battery_texture_rects[i]
+		if cell_val >= 0.75:
+			tex_rect.texture = _tex_battery_full
+		elif cell_val >= 0.25:
+			tex_rect.texture = _tex_battery_half
+		else:
+			tex_rect.texture = _tex_battery_empty
 	_update_shard_colors()
 
 
 func _update_shard_colors() -> void:
-	var active_color: Color = _current_active_color if _is_low_battery else COLOR_FULL
-	for i in _shards.size():
-		var left_rect: ColorRect = _shards[i][0]
-		var right_rect: ColorRect = _shards[i][1]
-		
-		left_rect.color = active_color if (2 * i) < _half_shards_filled else COLOR_EMPTY
-		right_rect.color = active_color if (2 * i + 1) < _half_shards_filled else COLOR_EMPTY
+	var active_color: Color = _current_active_color if _is_low_battery else Color.WHITE
+	for tex_rect in _battery_texture_rects:
+		tex_rect.modulate = active_color
+
+
+func _on_bombs_changed(count: int, _max_bombs: int = 3) -> void:
+	for i in _bomb_texture_rects.size():
+		var rect: TextureRect = _bomb_texture_rects[i]
+		if i < count:
+			rect.modulate = Color.WHITE
+		else:
+			rect.modulate = Color(0.25, 0.25, 0.3, 0.4)
 
 
 func _on_low_battery_warning(is_low: bool) -> void:
@@ -226,7 +290,7 @@ func _on_low_battery_warning(is_low: bool) -> void:
 		var tween := create_tween()
 		tween.tween_property(_container, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 	else:
-		_current_active_color = COLOR_FULL
+		_current_active_color = Color.WHITE
 		_update_shard_colors()
 
 
@@ -562,14 +626,6 @@ func _scroll_to_highlighted_panel(panel: PanelContainer) -> void:
 	scroll_tween.tween_property(_scroll_container, "scroll_vertical", scroll_target, 0.4).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 
 
-func _on_bombs_changed(current: int, _maximum: int) -> void:
-	for i in _bomb_rects.size():
-		if i < current:
-			_bomb_rects[i].color = Color(0.9, 0.1, 0.1) # Bright red
-		else:
-			_bomb_rects[i].color = COLOR_EMPTY
-
-
 func _on_combo_changed(combo: int) -> void:
 	if combo >= 1:
 		var player := get_tree().get_first_node_in_group("player")
@@ -607,4 +663,3 @@ func _wire_ui_sounds(button: Button) -> void:
 		return
 	button.mouse_entered.connect(func(): if EventBus: EventBus.ui_button_hovered.emit())
 	button.pressed.connect(func(): if EventBus: EventBus.ui_button_clicked.emit())
-

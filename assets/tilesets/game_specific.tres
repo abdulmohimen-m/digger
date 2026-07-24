@@ -47,6 +47,11 @@ separation = Vector2i(1, 1)
 1:5/0 = 0
 2:5/0 = 0
 3:5/0 = 0
+4:5/0 = 0
+5:5/0 = 0
+6:5/0 = 0
+6:1/0 = 0
+7:1/0 = 0
 
 [resource]
 sources/0 = SubResource("TileSetAtlasSource_lcgrd")
