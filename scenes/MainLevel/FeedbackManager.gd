@@ -57,7 +57,7 @@ func _ready() -> void:
 func _on_rock_wobbling(pos: Vector2) -> void:
 	_spawn_vfx(null, pos, Color("a8a8a8"))
 	if SoundManager:
-		SoundManager.play_random_rock_dig_sfx()
+		SoundManager.play_random_dig_sfx()
 	if _camera and _camera.has_method("shake"):
 		_camera.shake(2.0)
 
