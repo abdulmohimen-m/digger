@@ -230,6 +230,9 @@ func generate_map() -> void:
 
 	var rows_since_battery: int = 0
 	var next_guaranteed_battery_row: int = rng.randi_range(8, 12)
+	
+	var rows_since_stratum: int = 0
+	var next_stratum_row: int = rng.randi_range(15, 25)
 
 	for y in range(map_depth):
 		# Fill left outer area: plain background tiles (x = -11 to -2) and adjacent left border (x = -1)
@@ -258,74 +261,133 @@ func generate_map() -> void:
 				set_cell(Vector2i(x, y), SOURCE_ID, TILE_PLAIN)
 			continue
 
+		rows_since_stratum += 1
+		var is_stratum_row: bool = false
+		var gap1: int = -1
+		var gap2: int = -1
+		
+		# Prevent strata in the first 20 rows so players can learn
+		if y > 20 and rows_since_stratum >= next_stratum_row:
+			is_stratum_row = true
+			rows_since_stratum = 0
+			next_stratum_row = rng.randi_range(15, 25)
+			
+			gap1 = rng.randi_range(1, map_width)
+			if rng.randf() < 0.4: # 40% chance for a second gap
+				gap2 = rng.randi_range(1, map_width)
+
 		# Guaranteed battery spawn counter check
 		rows_since_battery += 1
 		var forced_battery_col: int = -1
 		if rows_since_battery >= next_guaranteed_battery_row:
-			forced_battery_col = rng.randi_range(1, map_width)
 			rows_since_battery = 0
 			next_guaranteed_battery_row = rng.randi_range(8, 12)
+			
+			if is_stratum_row:
+				forced_battery_col = gap1 # Force into gap so it isn't overwritten by bedrock
+			else:
+				forced_battery_col = rng.randi_range(1, map_width)
+
+		# Procedural Vein generation
+		var is_vein_row: bool = false
+		var vein_start: int = -1
+		var vein_end: int = -1
+		var vein_tile: Vector2i = TILE_GOLD
+		
+		if not is_stratum_row and rng.randf() < 0.15: # 15% chance per row
+			is_vein_row = true
+			var length = rng.randi_range(3, 5)
+			vein_start = rng.randi_range(1, map_width - length + 1)
+			vein_end = vein_start + length - 1
+			
+			if y <= 150:
+				vein_tile = TILE_GOLD if rng.randf() < 0.90 else TILE_DIAMOND
+			elif y <= 350:
+				vein_tile = TILE_GOLD if rng.randf() < 0.65 else TILE_DIAMOND
+			else:
+				vein_tile = TILE_GOLD if rng.randf() < 0.45 else TILE_DIAMOND
+
+		var is_pre_stratum_row = (rows_since_stratum == next_stratum_row - 1)
 
 		for x in range(1, map_width + 1):
+			if is_stratum_row:
+				if x == gap1 or x == gap2:
+					if x == forced_battery_col:
+						set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
+					else:
+						set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
+				else:
+					set_cell(Vector2i(x, y), SOURCE_ID, TILE_UNDIGGABLE)
+				continue
+				
 			if x == forced_battery_col:
 				set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
 				continue
+				
+			if is_vein_row and x >= vein_start and x <= vein_end:
+				set_cell(Vector2i(x, y), SOURCE_ID, vein_tile)
+				continue
 
 			var roll: float = rng.randf()
+			var chance_mine = 0.0
+			var chance_undiggable = 0.0
+			var chance_battery = 0.0
+			var chance_bomb = 0.0
+			var chance_rock = 0.0
+			var chance_gold = 0.0
+			var chance_diamond = 0.0
 
 			# --- BIOME 1: Normal Soil (Depth 4 to 150) ---
 			if y <= 150:
-				if roll < 0.04:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_MINE)
-				elif roll < 0.07:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_UNDIGGABLE)
-				elif roll < 0.12:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
-				elif roll < 0.17:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
-				elif roll < 0.22:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
-				elif roll < 0.30:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_GOLD)
-				elif roll < 0.31:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIAMOND)
-				else:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
+				chance_mine = 0.04
+				chance_undiggable = 0.03 if not is_pre_stratum_row else 0.0
+				chance_battery = 0.05
+				chance_bomb = 0.05
+				chance_rock = 0.05
+				chance_gold = 0.01
+				chance_diamond = 0.005
 
 			# --- BIOME 2: Rocky Soil (Depth 151 to 350) ---
 			elif y <= 350:
-				if roll < 0.06:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_MINE)
-				elif roll < 0.14:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_UNDIGGABLE)
-				elif roll < 0.39:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
-				elif roll < 0.44:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
-				elif roll < 0.50:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
-				elif roll < 0.60:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_GOLD)
-				elif roll < 0.64:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIAMOND)
-				else:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
+				chance_mine = 0.06
+				chance_undiggable = 0.08 if not is_pre_stratum_row else 0.0
+				chance_rock = 0.25
+				chance_battery = 0.05
+				chance_bomb = 0.06
+				chance_gold = 0.02
+				chance_diamond = 0.01
 
 			# --- BIOME 3: Ancient Mines (Depth 351 to 498) ---
 			else:
-				if roll < 0.10:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_MINE)
-				elif roll < 0.25:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_UNDIGGABLE)
-				elif roll < 0.50:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
-				elif roll < 0.55:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
-				elif roll < 0.60:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
-				elif roll < 0.72:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_GOLD)
-				elif roll < 0.80:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIAMOND)
-				else:
-					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
+				chance_mine = 0.10
+				chance_undiggable = 0.15 if not is_pre_stratum_row else 0.0
+				chance_rock = 0.25
+				chance_battery = 0.05
+				chance_bomb = 0.05
+				chance_gold = 0.03
+				chance_diamond = 0.02
+
+			var c1 = chance_mine
+			var c2 = c1 + chance_undiggable
+			var c3 = c2 + chance_battery
+			var c4 = c3 + chance_bomb
+			var c5 = c4 + chance_rock
+			var c6 = c5 + chance_gold
+			var c7 = c6 + chance_diamond
+
+			if roll < c1:
+				set_cell(Vector2i(x, y), SOURCE_ID, TILE_MINE)
+			elif roll < c2:
+				set_cell(Vector2i(x, y), SOURCE_ID, TILE_UNDIGGABLE)
+			elif roll < c3:
+				set_cell(Vector2i(x, y), SOURCE_ID, TILE_BATTERY)
+			elif roll < c4:
+				set_cell(Vector2i(x, y), SOURCE_ID, TILE_BOMB)
+			elif roll < c5:
+				set_cell(Vector2i(x, y), SOURCE_ID, TILE_ROCK)
+			elif roll < c6:
+				set_cell(Vector2i(x, y), SOURCE_ID, TILE_GOLD)
+			elif roll < c7:
+				set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIAMOND)
+			else:
+				set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)

@@ -10,9 +10,11 @@ This document logs all the features, logic, and polish implemented during this d
 - **Level Dimensions:** 10 playable columns (columns 1 to 10) x 500 rows deep, framed by indestructible side border walls (`col 0` and `col 11`) and a metallic floor (`row 499`).
 - **Surface Onboarding Zone:** Rows 0 to 3 are cleared of tiles to guarantee safe vehicle spawning and controls familiarization.
 - **3-Biome Progression:**
-  - **Biome 1 (Normal Soil - Depth 4 to 150):** 85% Soft Dirt, 5% Rock, 5% Battery Canisters, 5% Bomb Canisters.
-  - **Biome 2 (Rocky Layer - Depth 151 to 350):** 60% Soft Dirt, 25% 3-Hit Rock, 8% Battery Canisters, 7% Bomb Canisters.
-  - **Biome 3 (Ancient Mines - Depth 351 to 498):** 45% Soft Dirt, 30% Rock, 15% Undiggable Wall Blocks, 5% Battery, 5% Bomb.
+  - **Biome 1 (Normal Soil - Depth 4 to 150):** Soft Dirt base with 3% Undiggable, 5% Rock, 5% Battery, 5% Bomb, 4% Mine, and 1.5% scattered gems.
+  - **Biome 2 (Rocky Layer - Depth 151 to 350):** Soft Dirt base with 8% Undiggable, 25% 3-Hit Rock, 5% Battery, 6% Bomb, 6% Mine, and 3% scattered gems.
+  - **Biome 3 (Ancient Mines - Depth 351 to 498):** Soft Dirt base with 15% Undiggable, 25% Rock, 5% Battery, 5% Bomb, 10% Mine, and 5% scattered gems.
+- **Bedrock Strata System (Forced Pathing):** Generates horizontal solid floors of `TILE_UNDIGGABLE` metal every 15-25 depth rows (starting past depth 20) with 1 or 2 narrow gaps (`TILE_DIRT`). Forces players to move horizontally to locate openings, breaking predictable vertical rushing. Includes pre-stratum row safety (zero undiggables on row above) and automatically reroutes forced battery spawns into stratum gaps.
+- **Procedural Horizontal Vein System:** 15% of all rows generate contiguous 3-to-5 tile wide horizontal resource veins (`TILE_GOLD` and `TILE_DIAMOND`), concentrating collectible wealth into horizontal clusters to heavily incentivize side exploration. Biome depth scales diamond vein ratio (10% in Biome 1 $\rightarrow$ 35% in Biome 2 $\rightarrow$ 55% in Biome 3).
 - **Guaranteed Battery Spawning:** Enforces a safety rule spawning at least 1 battery canister every 8-12 depth rows to eliminate unwinnable drought bottlenecks.
 - **Seed Configuration:** Exposes `@export var seed_value: int = 0` (`0` = randomized on boot; non-zero = reproducible seed).
 
@@ -93,7 +95,7 @@ This document logs all the features, logic, and polish implemented during this d
 - **Frenzy Immunity:** Reaching Frenzy Mode (combo streak $\ge 10$) allows the drilling vehicle to blast safely through mines with 0 battery cost.
 
 ### 9. Gold & Diamond Collectibles System
-- **Progressive Biome Rarity:** Gold Veins (`4, 1`) and Diamond Ores (`3, 1`) spawn procedurally across biomes (Biome 1: 8% Gold / 1% Diamond, Biome 2: 10% Gold / 4% Diamond, Biome 3: 12% Gold / 8% Diamond).
+- **Vein-Based & Progressive Biome Rarity:** Gold Veins (`4, 1`) and Diamond Ores (`3, 1`) now primarily spawn in horizontal 3-to-5 block contiguous veins (15% row chance), supplemented by minor scattered deposits (1-3%). Diamond ratio scales with depth (Biome 1: 10% Diamond / 90% Gold, Biome 2: 35% Diamond / 65% Gold, Biome 3: 55% Diamond / 45% Gold).
 - **Dedicated HUD Counters:** Displays real-time item collection counts on dedicated HUD labels: `🟡 GOLD: N` (gold) and `💎 DIAMOND: N` (cyan) with scale-punch spring bounce animations.
 - **Score Calculation Integration:** Final run score formula: `(Max Depth * 10) + (Gold * 100) + (Diamonds * 300)`.
 - **Bomb Auto-Collection:** Detonating a bomb in a 3x3 area automatically collects any Gold and Diamond tiles caught in the blast area without destroying their value.
