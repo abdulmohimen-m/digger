@@ -51,6 +51,8 @@ func _ready() -> void:
 			dirt_layer.rock_wobbling.connect(_on_rock_wobbling)
 		if dirt_layer.has_signal("rock_shattered"):
 			dirt_layer.rock_shattered.connect(_on_rock_shattered)
+		if dirt_layer.has_signal("rock_settled"):
+			dirt_layer.rock_settled.connect(_on_rock_settled)
 		if dirt_layer.has_signal("cross_blast_step"):
 			dirt_layer.cross_blast_step.connect(_on_cross_blast_step)
 
@@ -60,6 +62,13 @@ func _on_rock_wobbling(pos: Vector2) -> void:
 		SoundManager.play_random_dig_sfx()
 	if _camera and _camera.has_method("shake"):
 		_camera.shake(2.0)
+
+func _on_rock_settled(pos: Vector2) -> void:
+	_spawn_vfx(null, pos, Color("777777"))
+	if SoundManager:
+		SoundManager.play_random_rock_dig_sfx()
+	if _camera and _camera.has_method("shake"):
+		_camera.shake(5.0)
 
 func _on_rock_shattered(pos: Vector2) -> void:
 	_spawn_vfx(null, pos, Color("555555"))

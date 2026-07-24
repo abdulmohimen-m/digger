@@ -27,6 +27,7 @@ const SOURCE_ID: int = 0
 
 signal rock_wobbling(pos: Vector2)
 signal rock_shattered(pos: Vector2)
+signal rock_settled(pos: Vector2)
 signal cross_blast_step(origin_cell: Vector2i, h_step_cells: Array[Vector2i], v_step_cells: Array[Vector2i])
 
 var _wobbling_rocks: Dictionary = {} # cell -> timer float
@@ -106,6 +107,8 @@ func _step_rock_fall(cell: Vector2i, player, player_cell: Vector2i) -> void:
 		var cell_under_next := cell_below + Vector2i(0, 1)
 		if is_empty(cell_under_next) or cell_under_next == player_cell:
 			_falling_rocks[cell_below] = rock_fall_step_delay
+		else:
+			rock_settled.emit(map_to_local(cell_below))
 
 
 ## Clears a tile at cell and checks if rock above should fall.
