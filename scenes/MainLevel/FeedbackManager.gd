@@ -31,6 +31,35 @@ func _ready() -> void:
 		player.hit_mine.connect(_on_player_hit_mine)
 		player.low_battery_warning.connect(_on_player_low_battery_warning)
 		player.battery_depleted.connect(_on_player_battery_depleted)
+		if player.has_signal("rock_crushed_player"):
+			player.rock_crushed_player.connect(_on_rock_crushed_player)
+
+	var dirt_layer = get_parent().get_node_or_null("Tilemaps/DirtLayer")
+	if dirt_layer:
+		if dirt_layer.has_signal("rock_wobbling"):
+			dirt_layer.rock_wobbling.connect(_on_rock_wobbling)
+		if dirt_layer.has_signal("rock_shattered"):
+			dirt_layer.rock_shattered.connect(_on_rock_shattered)
+
+func _on_rock_wobbling(pos: Vector2) -> void:
+	_spawn_vfx(null, pos, Color("a8a8a8"))
+	if _camera and _camera.has_method("shake"):
+		_camera.shake(2.0)
+
+func _on_rock_shattered(pos: Vector2) -> void:
+	_spawn_vfx(null, pos, Color("555555"))
+	if SoundManager:
+		SoundManager.play_random_rock_dig_sfx()
+	if _camera and _camera.has_method("shake"):
+		_camera.shake(8.0)
+
+func _on_rock_crushed_player(pos: Vector2) -> void:
+	_spawn_vfx(null, pos, Color(1.0, 0.2, 0.2))
+	_spawn_floating_text(pos, "🪨 CRUSHED! -3 BATTERY", Color(1.0, 0.2, 0.2))
+	if SoundManager:
+		SoundManager.play_random_rock_dig_sfx()
+	if _camera and _camera.has_method("shake"):
+		_camera.shake(10.0)
 
 func _on_player_dug_tile(pos: Vector2) -> void:
 	_spawn_vfx(dig_vfx, pos, Color("8b5a2b")) # Brown placeholder

@@ -3,6 +3,8 @@ extends TileMapLayer
 @export var map_width: int = 10
 @export var map_depth: int = 500
 @export var seed_value: int = 0
+@export var rock_wobble_time: float = 0.7
+@export var rock_fall_step_delay: float = 0.35
 
 const TILE_WALL = Vector2i(0, 0)
 const TILE_CRACKED_ROCK = Vector2i(1, 0)
@@ -23,11 +25,107 @@ const OUTER_MARGIN: int = 10
 const SOURCE_ID: int = 0
 
 
+signal rock_wobbling(pos: Vector2)
+signal rock_shattered(pos: Vector2)
+
+var _wobbling_rocks: Dictionary = {} # cell -> timer float
+var _falling_rocks: Dictionary = {}  # cell -> step timer float
+
+
 func _ready() -> void:
 	generate_map()
 
 
-## Procedurally generates the 10-column wide by 500-row deep level across 3 biomes.
+func _process(delta: float) -> void:
+	if _wobbling_rocks.is_empty() and _falling_rocks.is_empty():
+		return
+
+	var player = get_tree().get_first_node_in_group("player")
+	var player_cell := Vector2i(-999, -999)
+	if player:
+		player_cell = local_to_map(to_local(player.global_position))
+
+	# 1. Update wobbling rocks
+	var finished_wobble: Array[Vector2i] = []
+	for cell in _wobbling_rocks.keys():
+		_wobbling_rocks[cell] -= delta
+		if _wobbling_rocks[cell] <= 0.0:
+			finished_wobble.append(cell)
+
+	for cell in finished_wobble:
+		_wobbling_rocks.erase(cell)
+		var cell_below := cell + Vector2i(0, 1)
+		if is_empty(cell_below) or cell_below == player_cell:
+			_falling_rocks[cell] = rock_fall_step_delay
+
+	# 2. Update falling rocks
+	var to_advance: Array[Vector2i] = []
+	for cell in _falling_rocks.keys():
+		_falling_rocks[cell] -= delta
+		if _falling_rocks[cell] <= 0.0:
+			to_advance.append(cell)
+
+	for cell in to_advance:
+		_falling_rocks.erase(cell)
+		_step_rock_fall(cell, player, player_cell)
+
+
+func check_falling_rock_above(cell: Vector2i) -> void:
+	var cell_above := cell + Vector2i(0, -1)
+	var atlas := get_cell_atlas_coords(cell_above)
+	if atlas == TILE_ROCK or atlas == TILE_CRACKED_ROCK:
+		if not _wobbling_rocks.has(cell_above) and not _falling_rocks.has(cell_above):
+			_wobbling_rocks[cell_above] = rock_wobble_time
+			var world_pos := map_to_local(cell_above)
+			rock_wobbling.emit(world_pos)
+
+
+func _step_rock_fall(cell: Vector2i, player, player_cell: Vector2i) -> void:
+	var rock_type := get_cell_atlas_coords(cell)
+	if rock_type != TILE_ROCK and rock_type != TILE_CRACKED_ROCK:
+		return
+
+	var cell_below := cell + Vector2i(0, 1)
+
+	# Check if player is crushed
+	if player and (cell_below == player_cell or cell == player_cell):
+		set_cell(cell, SOURCE_ID, TILE_PLAIN)
+		rock_shattered.emit(map_to_local(cell_below))
+		if player.has_method("take_rock_crush_damage"):
+			player.take_rock_crush_damage(3.0)
+		check_falling_rock_above(cell)
+		return
+
+	if is_empty(cell_below):
+		set_cell(cell, SOURCE_ID, TILE_PLAIN)
+		set_cell(cell_below, SOURCE_ID, rock_type)
+		rock_wobbling.emit(map_to_local(cell_below))
+		check_falling_rock_above(cell)
+
+		var cell_under_next := cell_below + Vector2i(0, 1)
+		if is_empty(cell_under_next) or cell_under_next == player_cell:
+			_falling_rocks[cell_below] = rock_fall_step_delay
+
+
+## Clears a tile at cell and checks if rock above should fall.
+func clear_tile(cell: Vector2i) -> void:
+	set_cell(cell, SOURCE_ID, TILE_PLAIN)
+	check_falling_rock_above(cell)
+
+
+## Returns true if a diggable tile was found and replaced with plain tile at the given cell.
+func try_dig(cell: Vector2i) -> bool:
+	if is_empty(cell):
+		return false
+	clear_tile(cell)
+	return true
+
+
+## Returns true if the cell contains no tile or is a plain background tile (cleared / already dug).
+func is_empty(cell: Vector2i) -> bool:
+	if get_cell_source_id(cell) == -1:
+		return true
+	return get_cell_atlas_coords(cell) == TILE_PLAIN
 func generate_map() -> void:
 	clear()
 	var rng := RandomNumberGenerator.new()
@@ -137,20 +235,3 @@ func generate_map() -> void:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIAMOND)
 				else:
 					set_cell(Vector2i(x, y), SOURCE_ID, TILE_DIRT)
-
-
-## Returns true if a diggable tile was found and replaced with plain tile at the given cell.
-func try_dig(cell: Vector2i) -> bool:
-	if is_empty(cell):
-		return false
-	set_cell(cell, SOURCE_ID, TILE_PLAIN)
-	return true
-
-
-## Returns true if the cell contains no tile or is a plain background tile (cleared / already dug).
-func is_empty(cell: Vector2i) -> bool:
-	if get_cell_source_id(cell) == -1:
-		return true
-	return get_cell_atlas_coords(cell) == TILE_PLAIN
-
-

@@ -19,6 +19,8 @@ signal frenzy_level_changed(level: int)
 signal low_battery_warning(is_low: bool)
 signal battery_depleted(pos: Vector2)
 signal depth_changed(current_depth: int, biome_name: String)
+signal combo_timer_updated(ratio: float)
+signal rock_crushed_player(pos: Vector2)
 
 const TILE_SIZE: int = 16
 const MAX_BATTERY: float = 10.0
@@ -46,6 +48,7 @@ const MAX_BOMBS: int = 3
 const BOMB_BATTERY_COST: float = 3.0
 const ROCK_DRILL_DELAY: float = 0.4
 const LOW_BATTERY_THRESHOLD: float = 3.0
+const COMBO_DECAY_TIME: float = 1.5
 
 # Map horizontal bounds (tile columns 1-10 are playable)
 const MAP_MIN_X: float = 1.0 * TILE_SIZE + TILE_SIZE * 0.5   # center of col 1
@@ -56,6 +59,8 @@ const MAP_MAX_X: float = 10.0 * TILE_SIZE + TILE_SIZE * 0.5  # center of col 10
 var battery: float = MAX_BATTERY
 var bombs: int = MAX_BOMBS
 var combo_count: int = 0
+var _combo_decay_timer: float = 0.0
+var _is_combo_timer_active: bool = false
 var _is_moving: bool = false
 var _last_emitted_moving: bool = false
 var _target_position: Vector2
@@ -164,7 +169,7 @@ func _physics_process(delta: float) -> void:
 
 		if dir == Vector2i.ZERO:
 			if combo_count > 0:
-				_reset_combo()
+				_start_combo_decay()
 		else:
 			_try_move(dir)
 
@@ -176,7 +181,10 @@ func _physics_process(delta: float) -> void:
 
 
 func _clear_tile(cell: Vector2i) -> void:
-	_dirt_layer.set_cell(cell, SOURCE_ID, TILE_PLAIN)
+	if _dirt_layer.has_method("clear_tile"):
+		_dirt_layer.clear_tile(cell)
+	else:
+		_dirt_layer.set_cell(cell, SOURCE_ID, TILE_PLAIN)
 
 
 func _try_move(dir: Vector2i) -> void:
@@ -304,7 +312,7 @@ func _try_move(dir: Vector2i) -> void:
 			else:
 				_current_move_speed = MOVE_SPEED_FREE
 				_is_digging = false
-				_reset_combo()
+				_start_combo_decay()
 				moved_freely.emit(target_pos)
 			_target_position = target_pos
 			_is_moving = true
@@ -323,7 +331,7 @@ func _try_move(dir: Vector2i) -> void:
 				else:
 					_current_move_speed = MOVE_SPEED_FREE
 					_is_digging = false
-					_reset_combo()
+					_start_combo_decay()
 					moved_freely.emit(target_pos)
 				_target_position = target_pos
 				_is_moving = true
@@ -345,7 +353,7 @@ func _try_move(dir: Vector2i) -> void:
 				else:
 					_current_move_speed = MOVE_SPEED_FREE
 					_is_digging = false
-					_reset_combo()
+					_start_combo_decay()
 					moved_freely.emit(target_pos)
 				_target_position = target_pos
 				_is_moving = true
@@ -394,6 +402,13 @@ func _recharge_battery(amount: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if _is_combo_timer_active and combo_count > 0:
+		_combo_decay_timer -= delta
+		var ratio: float = clampf(_combo_decay_timer / COMBO_DECAY_TIME, 0.0, 1.0)
+		combo_timer_updated.emit(ratio)
+		if _combo_decay_timer <= 0.0:
+			_reset_combo()
+
 	if _is_low_battery and _low_bat_label and _low_bat_label.visible:
 		var pulse: float = (sin(Time.get_ticks_msec() * 0.012) + 1.0) * 0.5
 		_low_bat_label.modulate = Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.2, 0.2), pulse)
@@ -443,8 +458,19 @@ func _trigger_battery_depletion() -> void:
 	_is_busy = false
 
 
+func _start_combo_decay() -> void:
+	if combo_count > 0 and not _is_combo_timer_active:
+		_is_combo_timer_active = true
+		_combo_decay_timer = COMBO_DECAY_TIME
+		combo_timer_updated.emit(1.0)
+
+
 func _increment_combo() -> void:
 	combo_count += 1
+	_is_combo_timer_active = true
+	_combo_decay_timer = COMBO_DECAY_TIME
+	combo_timer_updated.emit(1.0)
+
 	var new_level: int = 0
 	if combo_count >= 50:
 		new_level = 5
@@ -469,12 +495,24 @@ func _increment_combo() -> void:
 
 
 func _reset_combo() -> void:
+	_combo_decay_timer = 0.0
+	_is_combo_timer_active = false
+	combo_timer_updated.emit(0.0)
 	if combo_count > 0:
 		combo_count = 0
 		if frenzy_level > 0:
 			frenzy_level = 0
 			frenzy_level_changed.emit(0)
 		combo_changed.emit(combo_count)
+
+
+func take_rock_crush_damage(amount: float = 3.0) -> void:
+	if _is_depleted:
+		return
+	_spend_battery(amount)
+	_reset_combo()
+	rock_crushed_player.emit(global_position)
+	_play_impact_lunge(Vector2i(0, 1))
 
 
 func _get_frenzy_speed() -> float:

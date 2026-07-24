@@ -126,16 +126,26 @@ This document logs all the features, logic, and polish implemented during this d
 - **Noise Shake:** Attacking or hitting a wall/boundary triggers a smooth 6.0px screen shake, powered by a custom `FastNoiseLite` generator that decays linearly.
 
 ### 6. Arcade Combo & 5-Tier Frenzy System
-- **Arcade Indicator:** A `COMBO xN` label sits on the HUD.
-- **Rules:** Increments with consecutive block digests (including battery collections). Resets to `0` instantly if the player stops moving (idles), moves into an empty tile, or bumps a wall.
+- **Arcade Indicator:** A `COMBO xN` label sits on the HUD with an animated gold/red draining progress bar underneath.
+- **🌟 REVISED 1.5s COMBO DECAY WINDOW:**
+  - Idling or moving through empty space no longer resets the combo streak immediately.
+  - A **1.5-second combo decay timer** starts, visually draining the HUD meter bar.
+  - Digging any valid tile before 1.5s expires resets the timer to 100% and increments the combo count.
+  - Bumping an undiggable wall or hitting a mine hazard bypasses the 1.5s timer and resets the combo instantly.
 - **Bounce Juice:** Tweened scale-punch visual bounce occurs on each increment.
-- **🌟 REVISED 5-TIER FRENZY ESCALATION:**
-  - **Level 1 (COMBO x10 - Cyan):** 0 Battery Drain + **Slight Speed Boost (`85.0`)**.
+- **🌟 5-TIER FRENZY ESCALATION:**
+  - **Level 1 (COMBO x10 - Cyan):** 0 Battery Drain + **Slight Speed Boost (`85.0`)** + Mine Explosion Immunity.
   - **Level 2 (COMBO x20 - Gold):** 0 Battery Drain + **More Speed Boost (`120.0`)**.
   - **Level 3 (COMBO x30 - Green):** Adds **Battery Recharge** (+0.5 battery restored on every step dug).
-  - **Level 4 (COMBO x40 - Orange):** Adds **Side Micro-Shockwave** (clears 2 perpendicular side soft dirt tiles, leaving the front tile intact so the combo streak is never broken).
+  - **Level 4 (COMBO x40 - Orange):** Adds **Side Micro-Shockwave** (clears 2 perpendicular side soft dirt tiles).
   - **Level 5 (COMBO x50 - Magenta):** **HYPER GOD DRILL!** Max speed `160.0`, 1-hit rocks, and full battery (10.0) + bomb (+3) refill!
-  - **Undiggable Protection:** Undiggable tiles (`39, 15`) and perimeter walls **always** block drilling across all levels, preserving layout structure and bomb utility.
+  - **Undiggable Protection:** Undiggable tiles and perimeter walls always block drilling across all levels.
+
+### 7. 🪨 Falling Rock Gravity Physics System
+- **0.4s Wobble Telegraph:** Digging, blasting, or clearing a tile beneath any Rock block (`TILE_ROCK` or `TILE_CRACKED_ROCK`) triggers a **0.4-second wobble state** with particle dust emissions and camera jitter.
+- **Medium-Slow Gravity Fall:** If space beneath remains empty after 0.4s, the rock falls vertically downward at ~5.5 tiles/sec (`0.18s` step timer), providing a ~1-2 tile reaction window to step aside.
+- **Player Crush Damage & Audio:** Landing on the player vehicle deals a **3.0 Battery Damage Penalty**, triggers a 10px camera shake, floating `🪨 CRUSHED! -3 BATTERY` text popup, plays `SoundManager.play_random_rock_dig_sfx()` crunch audio, and shatters the rock.
+- **Selective Heavy Gravity Rule:** Soil, Gold, Diamonds, and Bombs remain anchored in place so vertical digging shafts don't cause unwanted cave-ins. Boulders/Rocks remain distinct tactical hazards.
 
 ### 8. Directional Lunge & Squash/Stretch Hit Animation
 - **Universal Physical Juice:** Applied across all dirt digs, rock hits, undiggable bumps, and wall boundary impacts via `_play_impact_lunge(dir)`.

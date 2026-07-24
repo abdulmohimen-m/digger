@@ -40,7 +40,9 @@ var _bomb_texture_rects: Array[TextureRect] = []
 var _top_banner: PanelContainer = null
 var _gold_container: HBoxContainer
 var _diamond_container: HBoxContainer
+var _combo_container: HBoxContainer
 var _combo_label: Label
+var _combo_meter_bar: ProgressBar = null
 var _gold_label: Label
 var _diamond_label: Label
 var _layer_label: Label
@@ -214,6 +216,33 @@ func _ready() -> void:
 	_combo_label.add_theme_font_size_override("font_size", 20)
 	add_child(_combo_label)
 
+	_combo_meter_bar = ProgressBar.new()
+	_combo_meter_bar.position = Vector2(20, 134)
+	_combo_meter_bar.custom_minimum_size = Vector2(110, 8)
+	_combo_meter_bar.size = Vector2(110, 8)
+	_combo_meter_bar.max_value = 1.0
+	_combo_meter_bar.value = 0.0
+	_combo_meter_bar.show_percentage = false
+	_combo_meter_bar.visible = false
+	
+	var style_bg := StyleBoxFlat.new()
+	style_bg.bg_color = Color(0.1, 0.1, 0.15, 0.8)
+	style_bg.corner_radius_top_left = 3
+	style_bg.corner_radius_top_right = 3
+	style_bg.corner_radius_bottom_left = 3
+	style_bg.corner_radius_bottom_right = 3
+	
+	var style_fg := StyleBoxFlat.new()
+	style_fg.bg_color = Color(1.0, 0.84, 0.0)
+	style_fg.corner_radius_top_left = 3
+	style_fg.corner_radius_top_right = 3
+	style_fg.corner_radius_bottom_left = 3
+	style_fg.corner_radius_bottom_right = 3
+	
+	_combo_meter_bar.add_theme_stylebox_override("background", style_bg)
+	_combo_meter_bar.add_theme_stylebox_override("fill", style_fg)
+	add_child(_combo_meter_bar)
+
 	# Wait one frame so Player._ready() has had time to run and join its group
 	call_deferred("_connect_to_player")
 	_align_hud_to_gameplay()
@@ -242,6 +271,8 @@ func _connect_to_player() -> void:
 	if player:
 		player.battery_changed.connect(_on_battery_changed)
 		player.combo_changed.connect(_on_combo_changed)
+		if player.has_signal("combo_timer_updated"):
+			player.combo_timer_updated.connect(_on_combo_timer_updated)
 		player.bombs_changed.connect(_on_bombs_changed)
 		player.low_battery_warning.connect(_on_low_battery_warning)
 		player.battery_depleted.connect(_on_battery_depleted)
@@ -261,6 +292,18 @@ func _connect_to_player() -> void:
 		_on_combo_changed(player.combo_count)
 		if "current_depth" in player and player.has_method("get_biome_name"):
 			_on_depth_changed(player.current_depth, player.get_biome_name(player.current_depth))
+
+
+func _on_combo_timer_updated(ratio: float) -> void:
+	if _combo_meter_bar:
+		_combo_meter_bar.value = ratio
+		_combo_meter_bar.visible = ratio > 0.0 and ratio < 1.0
+		var style_fg: StyleBoxFlat = _combo_meter_bar.get_theme_stylebox("fill")
+		if style_fg:
+			if ratio < 0.3:
+				style_fg.bg_color = Color(1.0, 0.2, 0.2)
+			else:
+				style_fg.bg_color = Color(1.0, 0.84, 0.0)
 
 
 func _on_gold_changed(gold_count: int) -> void:
