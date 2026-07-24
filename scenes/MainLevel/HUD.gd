@@ -48,6 +48,7 @@ var _diamond_label: Label
 var _layer_label: Label
 var _bomb_container: HBoxContainer
 var _is_low_battery: bool = false
+var _hud_low_bat_label: Label = null
 var _pulse_timer: float = 0.0
 var _current_active_color: Color = Color.WHITE
 var _vignette: ColorRect = null
@@ -119,8 +120,16 @@ func _ready() -> void:
 
 	# --- Left Section: 3x Battery Bar & Bomb Slots ---
 	var left_vbox := VBoxContainer.new()
-	left_vbox.add_theme_constant_override("separation", 4)
+	left_vbox.add_theme_constant_override("separation", 2)
 	main_hbox.add_child(left_vbox)
+
+	_hud_low_bat_label = Label.new()
+	_hud_low_bat_label.text = "LOW BAT"
+	_hud_low_bat_label.add_theme_color_override("font_color", Color(1.0, 0.25, 0.25))
+	_hud_low_bat_label.add_theme_font_size_override("font_size", 12)
+	_hud_low_bat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_hud_low_bat_label.visible = false
+	left_vbox.add_child(_hud_low_bat_label)
 
 	# Move $BatteryContainer into left_vbox
 	if _container.get_parent():
@@ -259,6 +268,8 @@ func _process(delta: float) -> void:
 		var pulse: float = (sin(_pulse_timer) + 1.0) * 0.5
 		_current_active_color = Color.WHITE.lerp(COLOR_ALERT, pulse)
 		_update_shard_colors()
+		if _hud_low_bat_label:
+			_hud_low_bat_label.modulate = Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.2, 0.2), pulse)
 		if _vignette:
 			_vignette.color = Color(1.0, 0.0, 0.0, pulse * 0.22)
 	else:
@@ -373,6 +384,8 @@ func _on_bombs_changed(count: int, _max_bombs: int = 3) -> void:
 
 func _on_low_battery_warning(is_low: bool) -> void:
 	_is_low_battery = is_low
+	if _hud_low_bat_label:
+		_hud_low_bat_label.visible = _is_low_battery
 	if _is_low_battery:
 		# Scale punch HUD battery container to grab immediate attention
 		_container.pivot_offset = Vector2(_container.size.x * 0.5, _container.size.y * 0.5)
@@ -386,6 +399,8 @@ func _on_low_battery_warning(is_low: bool) -> void:
 
 func _on_battery_depleted(_pos: Vector2) -> void:
 	_is_low_battery = false
+	if _hud_low_bat_label:
+		_hud_low_bat_label.visible = false
 	_current_active_color = COLOR_ALERT
 	_update_shard_colors()
 	

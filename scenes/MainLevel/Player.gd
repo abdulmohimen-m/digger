@@ -71,7 +71,6 @@ var _is_digging: bool = false
 var _is_busy: bool = false
 var _is_low_battery: bool = false
 var _is_depleted: bool = false
-var _low_bat_label: Label = null
 var frenzy_level: int = 0
 var current_depth: int = -1
 var wealth: int = 0
@@ -118,17 +117,6 @@ func _ready() -> void:
 	diamond_changed.emit(diamond_count)
 	_update_depth_tracker()
 	_connect_to_event_bus()
-	
-	# Setup floating LOW BAT warning icon above vehicle
-	_low_bat_label = Label.new()
-	_low_bat_label.text = "⚠️ LOW BAT"
-	_low_bat_label.add_theme_color_override("font_color", Color(1.0, 0.25, 0.25))
-	_low_bat_label.add_theme_font_size_override("font_size", 9)
-	_low_bat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_low_bat_label.position = Vector2(-24, -18)
-	_low_bat_label.custom_minimum_size = Vector2(48, 12)
-	_low_bat_label.visible = false
-	add_child(_low_bat_label)
 
 
 func _physics_process(delta: float) -> void:
@@ -419,20 +407,10 @@ func _process(delta: float) -> void:
 		for bomb in to_detonate:
 			_explode_single_bomb(bomb)
 
-	if _is_low_battery and _low_bat_label and _low_bat_label.visible:
-		var pulse: float = (sin(Time.get_ticks_msec() * 0.012) + 1.0) * 0.5
-		_low_bat_label.modulate = Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.2, 0.2), pulse)
-		var scale_factor: float = 0.9 + pulse * 0.25
-		_low_bat_label.scale = Vector2(scale_factor, scale_factor)
-		_low_bat_label.pivot_offset = _low_bat_label.size * 0.5
-
-
 func _check_battery_state() -> void:
 	var is_low: bool = battery <= LOW_BATTERY_THRESHOLD and battery > 0.0
 	if is_low != _is_low_battery:
 		_is_low_battery = is_low
-		if _low_bat_label:
-			_low_bat_label.visible = _is_low_battery
 		low_battery_warning.emit(_is_low_battery)
 		
 	if battery <= 0.0 and not _is_depleted:
@@ -442,8 +420,6 @@ func _check_battery_state() -> void:
 func _trigger_battery_depletion() -> void:
 	_is_depleted = true
 	_is_busy = true
-	if _low_bat_label:
-		_low_bat_label.visible = false
 	if _is_low_battery:
 		_is_low_battery = false
 		low_battery_warning.emit(false)
