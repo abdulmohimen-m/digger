@@ -527,12 +527,17 @@ func take_rock_crush_damage(amount: float = 3.0) -> void:
 
 func _play_crush_animation() -> void:
 	var tween := create_tween()
-	# Heavy vehicle flattening (x stretched 1.6x, y squashed 0.4x) + bright red flash
-	tween.tween_property(_sprite, "scale", Vector2(1.6, 0.4), 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(_sprite, "modulate", Color(2.2, 0.3, 0.3), 0.05)
+	# Phase 1: Rapid squash into extreme pancake shape (2.0x width, 0.2x height) + crimson flash + ground anchor Y-offset (+6px)
+	tween.tween_property(_sprite, "scale", Vector2(2.0, 0.2), 0.04).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(_sprite, "position", Vector2(0, 6.0), 0.04)
+	tween.parallel().tween_property(_sprite, "modulate", Color(2.5, 0.2, 0.2), 0.04)
 	
-	# Recoil back to normal over 0.25s using spring easing
+	# Phase 2: Hold pancake shape for 0.20s so visual squish is crystal clear
+	tween.tween_interval(0.20)
+	
+	# Phase 3: Recoil back to normal scale, position, and color over 0.25s using spring easing
 	tween.tween_property(_sprite, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(_sprite, "position", Vector2.ZERO, 0.25).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(_sprite, "modulate", Color.WHITE, 0.25)
 
 

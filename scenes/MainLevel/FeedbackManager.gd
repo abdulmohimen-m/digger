@@ -122,10 +122,7 @@ func _on_rock_crushed_player(pos: Vector2) -> void:
 	if _camera and _camera.has_method("shake"):
 		_camera.shake(14.0)
 
-	# 4. Bold Arcade Floating Text Popup ("💥 CRUSHED! -3.0⚡")
-	_spawn_floating_text(pos, "💥 CRUSHED! -3.0⚡", Color(1.0, 0.25, 0.25))
-
-	# 5. Red Full-Screen Impact Flash Overlay
+	# 4. Red Full-Screen Impact Flash Overlay
 	var canvas_layer := CanvasLayer.new()
 	canvas_layer.layer = 20
 	var flash_rect := ColorRect.new()
