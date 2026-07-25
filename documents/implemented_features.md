@@ -63,7 +63,13 @@ This document logs all the features, logic, and polish implemented during this d
 - **🔊 Dynamic Motor Drill Pitch Scaling:**
   - **Slow Dirt Digging & Plain Tile Movement:** Plays at **1.60x pitch** for consistent motor feedback.
   - **Frenzy Super-Drilling Speeds:** Scales higher dynamically between **1.80x and 2.40x pitch** as digging speed ramps up during high combo combos.
+- **🎵 Dynamic Background Music & Frenzy Crossfader:**
+  - **Normal BGM:** Plays `maksymmalko-game-minecraft-gaming-background-music-402451.mp3` continuously on game start.
+  - **1.0s Frenzy Crossfade:** Smoothly crossfades to high-energy track (`freesound_community-high-energy-loop-69158.mp3`) upon entering Frenzy Mode (`frenzy_level >= 1`).
+  - **Position Resume:** Pauses and smoothly resumes normal background music from its previous playback position when Frenzy Mode ends (`frenzy_level == 0`).
+  - **Low-Pass Filter & Fade-out:** Applies low-pass muffled audio during Low Battery warning, and smooth 1.0s fade-out on Battery Depletion / Game Over.
 - **Self-Damage Penalty:** Standing in any cell of the cross-blast wave deals a **5.0 battery damage penalty**.
+
 
 ### 5. Undiggable Tiles & Wall Boundaries System
 - **Hard Obstacles:** Undiggable metal tiles (sprite coordinates `(4, 0)`), perimeter walls `(0, 0)`, and map boundaries block player movement.

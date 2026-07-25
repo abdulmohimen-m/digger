@@ -25,9 +25,16 @@ var _explosion_stream: AudioStream
 var _bomb_drop_stream: AudioStream
 var _drill_loop_stream: AudioStream
 
-# Audio Players Pool
+# Audio Players Pool & Dual BGM Crossfader
 var _sfx_players: Array[AudioStreamPlayer] = []
+var _bgm_normal_stream: AudioStream
+var _bgm_frenzy_stream: AudioStream
+var _bgm_normal_player: AudioStreamPlayer
+var _bgm_frenzy_player: AudioStreamPlayer
 var _bgm_player: AudioStreamPlayer
+var _bgm_crossfade_tween: Tween
+var _bgm_normal_playback_position: float = 0.0
+var _is_in_frenzy_bgm: bool = false
 var _drill_loop_player: AudioStreamPlayer
 var _drill_loop_tween: Tween
 var _is_drill_loop_active: bool = false
@@ -45,6 +52,7 @@ func _ready() -> void:
 	_generate_procedural_fallbacks()
 	_load_settings()
 	_connect_event_bus()
+	_start_default_bgm()
 
 # --- Audio Pool Setup ---
 func _init_audio_pool() -> void:
@@ -55,10 +63,15 @@ func _init_audio_pool() -> void:
 		add_child(player)
 		_sfx_players.append(player)
 	
-	# Dedicated BGM player
-	_bgm_player = AudioStreamPlayer.new()
-	_bgm_player.bus = &"Music"
-	add_child(_bgm_player)
+	# Dedicated BGM players for dual crossfading
+	_bgm_normal_player = AudioStreamPlayer.new()
+	_bgm_normal_player.bus = &"Music"
+	add_child(_bgm_normal_player)
+	_bgm_player = _bgm_normal_player
+
+	_bgm_frenzy_player = AudioStreamPlayer.new()
+	_bgm_frenzy_player.bus = &"Music"
+	add_child(_bgm_frenzy_player)
 
 	# Dedicated Drill Loop player
 	_drill_loop_player = AudioStreamPlayer.new()
@@ -105,6 +118,19 @@ func _load_audio_assets() -> void:
 		if _drill_loop_stream is AudioStreamOggVorbis:
 			_drill_loop_stream.loop = true
 		_drill_loop_player.stream = _drill_loop_stream
+
+	# Load BGM track assets
+	var norm_bgm_path := "res://assets/music/maksymmalko-game-minecraft-gaming-background-music-402451.mp3"
+	if ResourceLoader.exists(norm_bgm_path) or FileAccess.file_exists(norm_bgm_path):
+		_bgm_normal_stream = load(norm_bgm_path)
+		if _bgm_normal_stream is AudioStreamMP3:
+			_bgm_normal_stream.loop = true
+
+	var frenzy_bgm_path := "res://assets/music/freesound_community-high-energy-loop-69158.mp3"
+	if ResourceLoader.exists(frenzy_bgm_path) or FileAccess.file_exists(frenzy_bgm_path):
+		_bgm_frenzy_stream = load(frenzy_bgm_path)
+		if _bgm_frenzy_stream is AudioStreamMP3:
+			_bgm_frenzy_stream.loop = true
 
 func _generate_procedural_fallbacks() -> void:
 	# Generates clean retro arcade WAV samples in memory for fallback SFX
@@ -291,6 +317,20 @@ func _on_battery_depleted(_pos: Vector2) -> void:
 	_is_drill_loop_active = false
 	if _drill_loop_player and _drill_loop_player.playing:
 		_drill_loop_player.stop()
+
+	# Smoothly fade out background music on game over
+	if _bgm_crossfade_tween and _bgm_crossfade_tween.is_valid():
+		_bgm_crossfade_tween.kill()
+	_bgm_crossfade_tween = create_tween()
+	if _bgm_normal_player:
+		_bgm_crossfade_tween.parallel().tween_property(_bgm_normal_player, "volume_db", -80.0, 1.0)
+	if _bgm_frenzy_player:
+		_bgm_crossfade_tween.parallel().tween_property(_bgm_frenzy_player, "volume_db", -80.0, 1.0)
+	_bgm_crossfade_tween.tween_callback(func():
+		if _bgm_normal_player: _bgm_normal_player.stop()
+		if _bgm_frenzy_player: _bgm_frenzy_player.stop()
+	)
+
 	if _game_over_stream:
 		play_sfx(_game_over_stream, 1.0)
 	else:
@@ -336,13 +376,79 @@ func _on_frenzy_tier_changed(tier: int) -> void:
 			if stream:
 				play_sfx(stream, pitch)
 
+		# Crossfade to high-energy Frenzy music on tier >= 1
+		if not _is_in_frenzy_bgm:
+			_crossfade_bgm(true)
+	else:
+		# Return to normal BGM when Frenzy ends
+		if _is_in_frenzy_bgm:
+			_crossfade_bgm(false)
+
 func _on_ui_button_clicked() -> void:
 	play_random_dig_sfx(&"UI")
 
 func _on_ui_button_hovered() -> void:
 	play_sfx_key("ui_hover", 0.02, &"UI")
 
-# --- Music & Low-Pass Filter ---
+# --- Music & Dynamic Crossfader ---
+func _start_default_bgm() -> void:
+	if _bgm_normal_stream and _bgm_normal_player:
+		_bgm_normal_player.stream = _bgm_normal_stream
+		_bgm_normal_player.volume_db = linear_to_db(volume_music)
+		if not _bgm_normal_player.playing:
+			_bgm_normal_player.play()
+	if _bgm_frenzy_stream and _bgm_frenzy_player:
+		_bgm_frenzy_player.stream = _bgm_frenzy_stream
+		_bgm_frenzy_player.volume_db = -80.0
+
+func _crossfade_bgm(to_frenzy: bool, duration: float = 1.0) -> void:
+	_is_in_frenzy_bgm = to_frenzy
+
+	if _bgm_crossfade_tween and _bgm_crossfade_tween.is_valid():
+		_bgm_crossfade_tween.kill()
+
+	_bgm_crossfade_tween = create_tween()
+	var target_vol_db := linear_to_db(volume_music)
+
+	if to_frenzy:
+		# Save normal track playback position before pausing
+		if _bgm_normal_player and _bgm_normal_player.playing:
+			_bgm_normal_playback_position = _bgm_normal_player.get_playback_position()
+
+		# Fade out Normal BGM
+		if _bgm_normal_player:
+			_bgm_crossfade_tween.parallel().tween_property(_bgm_normal_player, "volume_db", -80.0, duration)
+
+		# Fade in Frenzy BGM
+		if _bgm_frenzy_player and _bgm_frenzy_player.stream:
+			if not _bgm_frenzy_player.playing:
+				_bgm_frenzy_player.volume_db = -80.0
+				_bgm_frenzy_player.play()
+			_bgm_crossfade_tween.parallel().tween_property(_bgm_frenzy_player, "volume_db", target_vol_db, duration)
+
+		_bgm_crossfade_tween.tween_callback(func():
+			if _is_in_frenzy_bgm and _bgm_normal_player:
+				_bgm_normal_player.stream_paused = true
+		)
+	else:
+		# Resume Normal BGM from saved position
+		if _bgm_normal_player and _bgm_normal_player.stream:
+			if _bgm_normal_player.stream_paused:
+				_bgm_normal_player.stream_paused = false
+			elif not _bgm_normal_player.playing:
+				_bgm_normal_player.volume_db = -80.0
+				_bgm_normal_player.play(_bgm_normal_playback_position)
+			_bgm_crossfade_tween.parallel().tween_property(_bgm_normal_player, "volume_db", target_vol_db, duration)
+
+		# Fade out Frenzy BGM
+		if _bgm_frenzy_player:
+			_bgm_crossfade_tween.parallel().tween_property(_bgm_frenzy_player, "volume_db", -80.0, duration)
+
+		_bgm_crossfade_tween.tween_callback(func():
+			if not _is_in_frenzy_bgm and _bgm_frenzy_player and _bgm_frenzy_player.playing:
+				_bgm_frenzy_player.stop()
+		)
+
 func _set_music_lowpass_filter(enabled: bool) -> void:
 	_bgm_lowpass_active = enabled
 	var music_bus_idx := AudioServer.get_bus_index(&"Music")
@@ -352,21 +458,22 @@ func _set_music_lowpass_filter(enabled: bool) -> void:
 func play_bgm(stream: AudioStream, crossfade_duration: float = 1.0) -> void:
 	if not stream:
 		return
-	if _bgm_player.playing and _bgm_player.stream == stream:
+	if _bgm_normal_player and _bgm_normal_player.playing and _bgm_normal_player.stream == stream:
 		return
-		
-	if crossfade_duration > 0.0 and _bgm_player.playing:
+
+	if crossfade_duration > 0.0 and _bgm_normal_player and _bgm_normal_player.playing:
 		var tween := create_tween()
-		tween.tween_property(_bgm_player, "volume_db", -80.0, crossfade_duration * 0.5)
+		tween.tween_property(_bgm_normal_player, "volume_db", -80.0, crossfade_duration * 0.5)
 		tween.tween_callback(func():
-			_bgm_player.stream = stream
-			_bgm_player.volume_db = linear_to_db(volume_music)
-			_bgm_player.play()
+			_bgm_normal_player.stream = stream
+			_bgm_normal_player.volume_db = linear_to_db(volume_music)
+			_bgm_normal_player.play()
 		)
 	else:
-		_bgm_player.stream = stream
-		_bgm_player.volume_db = linear_to_db(volume_music)
-		_bgm_player.play()
+		if _bgm_normal_player:
+			_bgm_normal_player.stream = stream
+			_bgm_normal_player.volume_db = linear_to_db(volume_music)
+			_bgm_normal_player.play()
 
 # --- Audio Buses & Persistence (SKG Preservation) ---
 func set_bus_volume(bus_name: StringName, linear_val: float) -> void:
